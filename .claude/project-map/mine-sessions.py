@@ -31,6 +31,9 @@ from pathlib import Path
 # ── Paths ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR   = Path(__file__).parent
 LEARNED_VOC  = SCRIPT_DIR / "learned-vocabulary.json"
+# Incremental cursor. Not merely a cost guard: merge_learned() ADDS scores, so
+# re-mining an already-counted transcript inflates it without bound.
+MINE_CURSOR  = SCRIPT_DIR / ".mine-cursor.json"
 PROJECT_ROOT = SCRIPT_DIR.parent.parent
 
 # ── Config ───────────────────────────────────────────────────────────────────
@@ -440,11 +443,27 @@ def decay_old_entries(vocab: dict) -> dict:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def load_cursor() -> float:
+    try:
+        return float(json.loads(MINE_CURSOR.read_text()).get('last_mined_mtime', 0.0))
+    except Exception:
+        return 0.0
+
+
+def save_cursor(mtime: float) -> None:
+    try:
+        MINE_CURSOR.write_text(json.dumps({'last_mined_mtime': mtime}, indent=2))
+    except OSError:
+        pass
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description='Mine Claude Code sessions for vocabulary aliases')
     parser.add_argument('--project-root', type=Path, default=None)
     parser.add_argument('--dry-run', action='store_true', help='Print results without saving')
     parser.add_argument('--verbose', '-v', action='store_true', help='Show per-file details')
+    parser.add_argument('--all', action='store_true',
+                        help='Ignore the incremental cursor and re-mine every transcript')
     args = parser.parse_args()
 
     global PROJECT_ROOT
@@ -467,6 +486,17 @@ def main() -> None:
         sys.exit(0)
 
     print(f"[mine-sessions] Found {len(session_files)} session file(s)")
+
+    # Only transcripts touched since the last run. Without this, every session
+    # start re-reads the whole history AND re-adds its scores.
+    cursor = 0.0 if args.all else load_cursor()
+    newest = max((f.stat().st_mtime for f in session_files), default=0.0)
+    if cursor:
+        session_files = [f for f in session_files if f.stat().st_mtime > cursor]
+        if not session_files:
+            print("[mine-sessions] No transcripts changed since last run — nothing to do")
+            sys.exit(0)
+        print(f"[mine-sessions] {len(session_files)} changed since last run")
 
     # Mine
     miner = SessionMiner(PROJECT_ROOT, verbose=args.verbose)
@@ -498,6 +528,7 @@ def main() -> None:
     merged = decay_old_entries(merged)
 
     LEARNED_VOC.write_text(json.dumps(merged, indent=2, ensure_ascii=False), encoding='utf-8')
+    save_cursor(newest)
     print(f"[mine-sessions] ✓ Saved {len(merged)} total aliases to {LEARNED_VOC}")
     print(f"  (run 'python generate.py --force' to rebuild sections with updated vocabulary)")
 
