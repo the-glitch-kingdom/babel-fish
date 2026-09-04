@@ -1134,7 +1134,11 @@ def build_vocabulary_section(vocab: list[dict]) -> str:
         notes    = v.get('notes', '').replace('|', '\\|')
         lines.append(f"| {alias} | {type_} | {location} | {notes} |")
     if not vocab:
-        lines.append("| _(no vocabulary generated yet — add source code to populate)_ | | | |")
+        # Prose, not a table row: a placeholder row parses as a valid entry with
+        # an empty (=neutral) location, which scored an empty vocabulary at 100%
+        # and left grader.py's greenfield branch permanently unreachable.
+        lines.append("")
+        lines.append("_No vocabulary generated yet — add source code to populate._")
     return '\n'.join(lines) + '\n'
 
 
@@ -1462,6 +1466,7 @@ def build_project_map(
     services: list[dict],
     vocab: list[dict],
     section_files: list[tuple[str, Path]],
+    scanned: dict[str, int] | None = None,
 ) -> str:
     now = datetime.now().strftime('%Y-%m-%d %H:%M')
     name = stack.get('name', PROJECT_ROOT.name)
@@ -1480,6 +1485,16 @@ def build_project_map(
         f"| Docker Services | {len(services)} |",
         f"| Vocabulary Entries | {len(vocab)} |",
         f"| Stack | {stack.get('language','?')} / {stack.get('framework','?')} |",
+        "",
+        # Inputs beside outputs. "0 routes" alone cannot be judged: from 47
+        # Python files it means an extractor is broken, from 0 it is correct.
+        # grader.py reads these to tell those two cases apart.
+        "### Source files scanned\n",
+        "| Language | Files |",
+        "|----------|-------|",
+    ] + [
+        f"| {lang} | {count} |" for lang, count in sorted((scanned or {}).items())
+    ] + [
         "",
         "## Section Index\n",
         "| # | Section | Size | When to Read |",
@@ -1639,7 +1654,11 @@ def main() -> None:
 
     # 6. Write PROJECT_MAP.md
     print("[generate] Writing PROJECT_MAP.md...")
-    project_map = build_project_map(stack, routes, models, schemas, features, migrations, services, vocab, section_files)
+    project_map = build_project_map(
+        stack, routes, models, schemas, features, migrations, services, vocab, section_files,
+        scanned={'python': len(py_files), 'typescript/javascript': len(ts_files),
+                 'go': len(go_files)},
+    )
     (MAP_DIR / 'PROJECT_MAP.md').write_text(project_map, encoding='utf-8')
 
     # 7. Update checksums

@@ -8,7 +8,7 @@
   },
   "scripts": {
     "postinstall": "node scripts/link-skills.js",
-    "test": "python3 .claude/project-map/test_generate.py && python3 .claude/project-map/test_mine_sessions.py"
+    "test": "python3 .claude/project-map/test_generate.py && python3 .claude/project-map/test_mine_sessions.py && python3 .claude/project-map/test_grader.py"
   },
   "files": [
     "bin/",
