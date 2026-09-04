@@ -1,15 +1,69 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-09-04T20:28:55Z",
-  "source": "/home/tmarlette/workspace/the-glitch-kingdom/babel-fish/.claude/project-map/sections/01-vocabulary.md",
+  "generated_at": "2026-09-04T20:30:11Z",
+  "source": ".claude/project-map/sections/01-vocabulary.md",
   "project": "babel-fish",
-  "entry_count": 1,
+  "entry_count": 10,
   "entries": [
+    {
+      "key": "/policy",
+      "canonical_path": "commands/policy.md",
+      "section": "command",
+      "description": "Get or set the babel-fish update policy (auto | nudge | off)"
+    },
+    {
+      "key": "/relink",
+      "canonical_path": "commands/relink.md",
+      "section": "command",
+      "description": "Re-run the skill linker — refresh symlinks from node_modules into .claude/skills/"
+    },
+    {
+      "key": "/status",
+      "canonical_path": "commands/status.md",
+      "section": "command",
+      "description": "Show installed version, latest available version, current update policy, and hook registration state"
+    },
+    {
+      "key": "/update",
+      "canonical_path": "commands/update.md",
+      "section": "command",
+      "description": "Update babel-fish to the latest version (runs npm update + re-links skills)"
+    },
+    {
+      "key": "babel fish developer skill",
+      "canonical_path": "skills/babel-fish-developer-skill/SKILL.md",
+      "section": "skill",
+      "description": "Full-stack developer context for any project with Babel Fish installed. Provides instant access to project map, vocabula"
+    },
+    {
+      "key": "babel-fish-developer-skill",
+      "canonical_path": "skills/babel-fish-developer-skill/SKILL.md",
+      "section": "skill",
+      "description": "Full-stack developer context for any project with Babel Fish installed. Provides instant access to project map, vocabula"
+    },
     {
       "key": "policy",
       "canonical_path": "commands/policy.md",
       "section": "command",
-      "description": "Get or set the policy (auto | nudge | off)"
+      "description": "Get or set the babel-fish update policy (auto | nudge | off)"
+    },
+    {
+      "key": "relink",
+      "canonical_path": "commands/relink.md",
+      "section": "command",
+      "description": "Re-run the skill linker — refresh symlinks from node_modules into .claude/skills/"
+    },
+    {
+      "key": "status",
+      "canonical_path": "commands/status.md",
+      "section": "command",
+      "description": "Show installed version, latest available version, current update policy, and hook registration state"
+    },
+    {
+      "key": "update",
+      "canonical_path": "commands/update.md",
+      "section": "command",
+      "description": "Update babel-fish to the latest version (runs npm update + re-links skills)"
     }
   ]
 }
