@@ -200,7 +200,14 @@ python .claude/project-map/grader.py
 
 ## Learned Vocabulary
 
-Every AI session is mined for vocabulary. When you say "the numbers page" and the AI opens `DealAnalyzerV2.tsx`, that alias is recorded with a score (frequency × recency). Aliases with a score ≥ 5 appear in `17-learned-vocabulary.md` automatically.
+Every AI session is mined for vocabulary. When you say "the numbers page" and the AI opens `DealAnalyzerV2.tsx`, that alias is recorded with a score (frequency × recency). Aliases with a score ≥ 5 appear in `17-learned-vocabulary.md`.
+
+Mining runs automatically at session start *(2.2.0+)*, detached and best-effort — it never delays or blocks a session. Only transcripts changed since the last run are read.
+
+Two things to expect:
+
+- **Aliases land one session late.** A session's transcript isn't written until it ends, so what you say today is mined at the *next* session start.
+- **Operational sessions mine little.** The miner learns feature nouns — "the deals page", "the billing workflow". A session spent on refactoring or releases contains few of those and will correctly yield nothing. See [learned vocabulary is empty](./.documentation/troubleshooting/learned-vocabulary-empty.md).
 
 Run the miner manually:
 

@@ -16,23 +16,25 @@ purpose: Quick reference for troubleshooting documentation
 
 | Metric | Value |
 |--------|-------|
-| Documents | 1 |
+| Documents | 2 |
 | Category | advanced |
 | Load Priority | 6/10 |
 
 ## Active Documents
 
+- [Learned vocabulary is empty](learned-vocabulary-empty.md)
 - [Project map is empty or stale](map-is-empty.md)
 
 ## Recently Updated
 
+- [Learned vocabulary is empty](learned-vocabulary-empty.md) - 2026-09-04
 - [Project map is empty or stale](map-is-empty.md) - 2026-09-04
 
 ## By Status
 
 | Status | Count |
 |--------|-------|
-| active | 1 |
+| active | 2 |
 | draft | 0 |
 | deprecated | 0 |
 | archived | 0 |

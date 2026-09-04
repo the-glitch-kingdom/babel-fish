@@ -2,6 +2,68 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2026-09-04
+
+### Fixed
+
+- **Session vocabulary mining has never worked**
+  ([#7](https://github.com/TheGlitchKing/babel-fish/issues/7)). The issue
+  reported that `mine-sessions.py` has no caller. It also had six defects, each
+  sufficient on its own to make it extract nothing — it exited 0 reporting
+  "Extracted 0 alias(es)" for its entire existence, which is why they survived.
+
+  1. **Wrong JSONL nesting.** Read `msg['content']`; Claude Code writes
+     `msg['message']['content']`. Measured on a real transcript: 0 vs 157
+     `tool_use` blocks, 0 vs 14 user messages. Both halves of the pairing were
+     empty.
+  2. **Invalid regex quantifiers.** `{2,40?}` and `{2,30?}` are malformed brace
+     expressions that Python silently treats as literals, so both patterns
+     compiled and matched nothing — including the one implementing this
+     feature's own README example, "the numbers page".
+  3. **Tool results collide with user turns.** Results arrive as `role: "user"`
+     (167 of 181 in one transcript), so the pairing window closed on the
+     assistant's own output.
+  4. **Bash file access was invisible.** A real session ran 148 Bash calls
+     against 2 Read and 2 Edit; only 4 of 157 tool calls qualified.
+  5. **Injected text was mined as user speech.** Skill and slash-command bodies
+     arrive in the user slot, and taught the miner aliases from the injected
+     documents themselves (`block_index_edits`, `refactor authentication
+     system` — the latter from a skill's worked example). Now skipped via
+     `isMeta` / `isSidechain`.
+  6. **Session discovery never matched exactly.** `.lstrip('-')` stripped the
+     leading separator that `~/.claude/projects/` slugs keep, so every lookup
+     fell through to a fuzzy substring match that also ran additively — and a
+     name like `kentro` matches four unrelated projects, whose aliases would be
+     attributed to this repo.
+
+  Verified against 220 MB of transcripts for a real product repo: 0 aliases
+  before, 170 after, reading like genuine domain vocabulary (`sign-up` →
+  `payments.py`, `pricing` → `subscription_gate.py`).
+
+- **`README.md` claimed mining happened "automatically".** It did not — nothing
+  called the miner. Now true, and documented with its two real caveats.
+
+### Added
+
+- **Mining runs at session start.** `hooks/session-start.js` spawns the miner
+  detached with output discarded and nothing awaited; it cannot delay or fail a
+  session, and no-ops when Python or the script is absent.
+- **Incremental cursor** (`.mine-cursor.json`). Not only a cost guard:
+  `merge_learned()` adds scores, so re-mining a counted transcript inflates it
+  without bound. `--all` forces a full re-mine.
+- 12 tests in `test_mine_sessions.py`, one per defect plus an end-to-end mine.
+  All 12 fail against the previous miner. `npm test` runs both suites (20).
+- Docs: `architecture/session-vocabulary-mining.md` (including the transcript
+  shape assumptions the miner depends on but does not control) and
+  `troubleshooting/learned-vocabulary-empty.md`.
+
+### Known issues
+
+- Aliases land one session late: SessionStart mines transcripts through the
+  previous session, since the current one isn't written yet.
+- Phrase quality is heuristic. Filtering drops clause-like candidates, but a
+  quoted string in a user message can still become an alias.
+
 ## [2.1.1] - 2026-09-04
 
 ### Fixed
