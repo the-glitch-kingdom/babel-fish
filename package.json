@@ -7,7 +7,8 @@
     "babel-fish": "bin/babel-fish.js"
   },
   "scripts": {
-    "postinstall": "node scripts/link-skills.js"
+    "postinstall": "node scripts/link-skills.js",
+    "test": "python3 .claude/project-map/test_generate.py"
   },
   "files": [
     "bin/",
