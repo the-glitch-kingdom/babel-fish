@@ -1,6 +1,6 @@
 # Babel Fish — Installation Report
 
-**Generated**: 2026-09-04 11:24:55
+**Generated**: 2026-09-04 12:40:25
 **Iteration**: 1 of 3  
 **Score**: 97.0%  
 **Result**: ✅ PASSED (90% threshold)
@@ -17,7 +17,7 @@
 | Secret Safety | 100.0% | 15% | 15.0 | ✅ Checked 20 files — 0 potential leak(s) |
 | Section Size Bounds | 100.0% | 10% | 10.0 | ✅ 19 sections, 0 size violations |
 | Structural Integrity | 100.0% | 10% | 10.0 | ✅ 0 broken TOC links, 0 structural issues |
-| Checksum Functionality | 100.0% | 5% | 5.0 | ✅ checksums.json valid (hash: acbc23a9a2eb...) |
+| Checksum Functionality | 100.0% | 5% | 5.0 | ✅ checksums.json valid (hash: 3a4470259aa6...) |
 
 **Total: 97.0 / 100**
 

@@ -173,7 +173,7 @@ def grade_import_chains() -> GradeResult:
 
     content = chains_file.read_text(encoding='utf-8', errors='replace')
 
-    if '_No import chains traced' in content or '_No' in content:
+    if '_No import chains traced' in content:
         # For greenfield or non-Python: acceptable
         details = "No chains traced (greenfield or non-Python stack — ok)"
         return GradeResult('import_chain_validity', WEIGHTS['import_chain_validity'],
@@ -497,6 +497,17 @@ def print_terminal_summary(results: list[GradeResult], total_score: float, passe
     print(f"  {'TOTAL SCORE':<30} {score_color}{total_score:5.1f}%{RESET}  → {verdict}")
     print(f"{CYAN}{'─' * 55}{RESET}\n")
 
+    pop, total_sections = populated_sections()
+    if total_sections:
+        print(f"  {'Sections populated':<30} {pop}/{total_sections}"
+              f"  (diagnostic — not scored)")
+        print()
+
+    for w in usefulness_warnings():
+        print(f"{YELLOW}  ⚠ {w}{RESET}")
+    if usefulness_warnings():
+        print()
+
     all_issues = [(r.display_name, i) for r in results for i in r.issues]
     if all_issues:
         print(f"{YELLOW}  Issues:{RESET}")
@@ -505,6 +516,71 @@ def print_terminal_summary(results: list[GradeResult], total_score: float, passe
         if len(all_issues) > 8:
             print(f"    ... and {len(all_issues) - 8} more (see report)")
         print()
+
+
+# ── Usefulness diagnostics (reported, never scored) ──────────────────────────
+# The seven graded categories all measure FORM, and generate.py always emits
+# well-formed output — so an empty map and a populated one score identically
+# (both 97.0% before this was added). The information that separates them is
+# not in the map, so it is surfaced as a warning rather than folded into the
+# score: making it scored would fail legitimately sparse repos, which is a
+# worse failure than the one it fixes.
+
+def _stat(content: str, label: str) -> int | None:
+    m = re.search(rf'^\|\s*{re.escape(label)}\s*\|\s*(\d+)\s*\|', content, re.MULTILINE)
+    return int(m.group(1)) if m else None
+
+
+def usefulness_warnings() -> list[str]:
+    map_file = MAP_DIR / 'PROJECT_MAP.md'
+    if not map_file.exists():
+        return []
+    content = map_file.read_text(encoding='utf-8', errors='replace')
+    warnings = []
+
+    # Vocabulary is the product. Zero entries means the map gave the user
+    # nothing, whatever the seven form categories say. This is the signal that
+    # would have surfaced issue #6 at install time.
+    vocab = _stat(content, 'Vocabulary Entries')
+    if vocab == 0:
+        warnings.append(
+            "Vocabulary is empty — the map's primary output produced nothing. "
+            "Expected on a repo with no source code; otherwise an extractor "
+            "does not understand this project's shape."
+        )
+
+    # Source files present but nothing extracted from them: a parser that does
+    # not fit the stack, rather than a repo with nothing to find.
+    scanned = 0
+    block = re.search(r'### Source files scanned(.*?)(?:\n## |\Z)', content, re.DOTALL)
+    if block:
+        scanned = sum(int(n) for n in re.findall(r'^\|[^|]+\|\s*(\d+)\s*\|',
+                                                 block.group(1), re.MULTILINE))
+    extracted = sum(v or 0 for v in (
+        _stat(content, 'API Routes'), _stat(content, 'Data Models'),
+        _stat(content, 'Schemas/DTOs'), _stat(content, 'Frontend Features')))
+    if scanned >= 10 and extracted == 0:
+        warnings.append(
+            f"Scanned {scanned} source file(s) but extracted no routes, models, "
+            f"schemas or features — likely an unsupported framework."
+        )
+    return warnings
+
+
+def populated_sections() -> tuple[int, int]:
+    """Sections carrying real content. Diagnostic only — 19 is aspirational,
+    not a target: a plugin repo can never populate routes or migrations."""
+    files = sorted(SECTIONS_DIR.glob('*.md')) if SECTIONS_DIR.exists() else []
+    pop = 0
+    for f in files:
+        body = f.read_text(encoding='utf-8', errors='replace')
+        meat = [ln for ln in body.splitlines()
+                if ln.strip() and not ln.startswith(('#', '>'))
+                and not re.fullmatch(r'\|[\s|:-]*\|', ln.strip())
+                and not re.match(r'^_\(?(no|none|not)\b', ln.strip(), re.I)]
+        if meat:
+            pop += 1
+    return pop, len(files)
 
 
 # ╔══════════════════════════════════════════════════════════════════════════╗

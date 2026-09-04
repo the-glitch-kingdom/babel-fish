@@ -14,7 +14,7 @@ purpose: Complete listing of architecture documentation
 
 ## Overview
 
-- **Total Documents:** 2
+- **Total Documents:** 3
 - **Domain:** `architecture/`
 - **Category:** development
 - **Load Priority:** 7/10
@@ -25,6 +25,7 @@ purpose: Complete listing of architecture documentation
 
 | Document | Status | Updated | Words |
 |----------|--------|---------|-------|
+| [Grading semantics](grading-semantics.md) | active | 2026-09-04 | 603 |
 | [Project map watch set](project-map-watch-set.md) | active | 2026-09-04 | 689 |
 | [Session vocabulary mining](session-vocabulary-mining.md) | active | 2026-09-04 | 654 |
 

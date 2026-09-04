@@ -111,17 +111,29 @@ does not, because it cannot change a list of paths.
 ## A passing grade does not mean a useful map
 
 `grader.py` scores this repo's completely empty map at **97.0% PASS** — the same
-score it gives the populated map. "Vocabulary Accuracy" reads 100% on zero
-entries because 0/0 is 100%, and "Section Completeness" counts a stub as a
-complete section.
+score it gives the populated map. It measures whether the map is well-*formed*,
+not whether it is *useful*, and `generate.py` always emits well-formed output.
 
-The grader measures whether the map is well-*formed*, not whether it is
-*useful*. Do not use it to confirm a parser fix. Run the regression suite
-instead:
+Since 2.3.0 the grader prints usefulness **warnings** below the score. They
+affect nothing, but they are the part worth reading:
+
+```
+  Sections populated             10/19  (diagnostic — not scored)
+
+  ⚠ Vocabulary is empty — the map's primary output produced nothing.
+  ⚠ Scanned 47 source file(s) but extracted no routes, models, schemas or features.
+```
+
+The first means the map gave you nothing. The second means a parser does not
+understand this project's stack. Neither fails the install.
+
+To confirm an extractor actually works, run the tests, not the grader:
 
 ```bash
-npm test        # or: python3 .claude/project-map/test_generate.py
+npm test        # 29 assertions across generate / mine-sessions / grader
 ```
+
+Full detail: [`grading-semantics.md`](../architecture/grading-semantics.md)
 
 ## See also
 

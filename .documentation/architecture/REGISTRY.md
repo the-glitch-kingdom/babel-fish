@@ -16,17 +16,19 @@ purpose: Quick reference for architecture documentation
 
 | Metric | Value |
 |--------|-------|
-| Documents | 2 |
+| Documents | 3 |
 | Category | development |
 | Load Priority | 7/10 |
 
 ## Active Documents
 
+- [Grading semantics](grading-semantics.md)
 - [Project map watch set](project-map-watch-set.md)
 - [Session vocabulary mining](session-vocabulary-mining.md)
 
 ## Recently Updated
 
+- [Grading semantics](grading-semantics.md) - 2026-09-04
 - [Project map watch set](project-map-watch-set.md) - 2026-09-04
 - [Session vocabulary mining](session-vocabulary-mining.md) - 2026-09-04
 
@@ -34,7 +36,7 @@ purpose: Quick reference for architecture documentation
 
 | Status | Count |
 |--------|-------|
-| active | 2 |
+| active | 3 |
 | draft | 0 |
 | deprecated | 0 |
 | archived | 0 |

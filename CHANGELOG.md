@@ -2,6 +2,56 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-09-04
+
+### Fixed
+
+- **The grader could not tell a useless map from a good one**
+  ([#9](https://github.com/TheGlitchKing/babel-fish/issues/9)). All seven graded
+  categories measure *form*, and `generate.py` always emits well-formed output,
+  so the completely empty pre-2.1.0 map scored **97.0% PASS** — identical
+  category-for-category to the populated map. Verified against the real artifact
+  recovered from git, not a reconstruction.
+
+  Rather than reweighting, usefulness is now reported as **warnings that never
+  touch the score**, so no existing install flips from pass to fail:
+
+  - `generate.py` records *inputs* beside outputs (`### Source files scanned`).
+    "0 routes" cannot be judged alone; "0 routes from 47 Python files" can. The
+    counts already existed in `main()` and were being discarded.
+  - An empty vocabulary warns — that is what babel-fish is for, so zero entries
+    means the map gave you nothing. This fires on the real pre-2.1.0 map and is
+    the signal that would have surfaced #6 at install time.
+  - Ten or more source files scanned with nothing extracted warns separately,
+    catching a parser that does not fit the stack. Small repos stay quiet.
+  - A populated-sections count prints as an explicit diagnostic.
+
+- **The greenfield branch in `grade_vocabulary_accuracy()` was unreachable.**
+  `build_vocabulary_section()` emitted a placeholder *table row* for an empty
+  vocabulary, which parsed as a valid entry whose blank location counts as
+  neutral — scoring 1/1 = 100% and stepping straight over the `if not rows`
+  branch written to award 85%. It now emits prose.
+
+- **`or '_No' in content` matched too much.** Any italicised word beginning
+  "No" (`_Note`, `_Nothing`) anywhere in `12-import-chains.md` scored a
+  populated section as an acceptable empty one at a flat 80%.
+
+### Added
+
+- 9 tests in `test_grader.py`, 7 of which fail against the previous code.
+  `npm test` now runs three suites (8 + 12 + 9 = 29).
+- `architecture/grading-semantics.md` — what the score means, what it
+  deliberately omits, and the measurements behind that choice.
+
+### Not done, deliberately
+
+Issue #9 originally proposed scoring section completeness on populated content.
+Measured and withdrawn: it fails the *correct* map too (85.2%), because 19
+sections is aspirational — a plugin repo can never populate routes, models,
+schemas or migrations, so `populated/19` tops out near 10/19 on a perfect map.
+It would fail every legitimately sparse repo, a worse failure than the one it
+fixes. The 90% threshold and the category weights are unchanged.
+
 ## [2.2.0] - 2026-09-04
 
 ### Fixed

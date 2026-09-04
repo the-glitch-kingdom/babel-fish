@@ -29,6 +29,10 @@ measures well-formedness, not usefulness.
 
 Never use the grade to confirm a parser or extractor fix. Run `npm test`.
 
+Since 2.3.0 the grader prints usefulness warnings below the score — "Vocabulary
+is empty" and "Scanned N source files but extracted nothing". Those are the
+lines worth reading; they do not affect pass/fail.
+
 ### "No changes detected" after editing a file
 
 Only files in the watch set move the checksum. If `generate.py` skips

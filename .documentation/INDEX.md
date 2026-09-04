@@ -18,7 +18,7 @@ purpose: Navigation hub for all documentation
 |--------|-----------|-------------|
 | [Agents](#agents) | 0 | Expert agent documentation, specialty matrix |
 | [API](#api) | 2 | API endpoints, routes, specifications, contracts |
-| [Architecture](#architecture) | 2 | System design, AI coach, project registry, patterns |
+| [Architecture](#architecture) | 3 | System design, AI coach, project registry, patterns |
 | [Backups](#backups) | 0 | Backup/restore guides, disaster recovery |
 | [Database](#database) | 0 | Schema, migrations, RLS, queries, procedures |
 | [DevOps](#devops) | 0 | Deployment, CI/CD, Docker, environments, infrastructure |
@@ -65,6 +65,7 @@ purpose: Navigation hub for all documentation
 
 | Document | Tier | Status | Updated |
 |----------|------|--------|----------|
+| [Grading semantics](architecture/grading-semantics.md) | reference | active | 2026-09-04 |
 | [Project map watch set](architecture/project-map-watch-set.md) | reference | active | 2026-09-04 |
 | [Session vocabulary mining](architecture/session-vocabulary-mining.md) | reference | active | 2026-09-04 |
 
