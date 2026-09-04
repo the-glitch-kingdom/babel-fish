@@ -136,6 +136,22 @@ def test_generate_emits_prose_not_a_row_for_empty_vocab():
     assert "No vocabulary generated yet" in out
 
 
+def test_project_root_relocates_grader_paths(tmp):
+    """The grader used to read its OWN sections while validating paths against
+    a different project — a confident but meaningless score."""
+    g = load_grader(tmp)
+    target = tmp / "elsewhere"
+    target.mkdir(parents=True)
+    script_owned = g.SECTIONS_DIR
+    g.configure_paths(target)
+    assert g.PROJECT_ROOT == target
+    for name in ("MAP_DIR", "SECTIONS_DIR", "REPORTS_DIR"):
+        p = getattr(g, name)
+        assert str(p).startswith(str(target)), f"{name} outside target: {p}"
+        assert p != script_owned, f"{name} still the script's: {p}"
+    assert g.REPORTS_DIR.is_dir()
+
+
 def main() -> int:
     import inspect
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

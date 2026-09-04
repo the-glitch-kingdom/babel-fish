@@ -172,6 +172,19 @@ def test_junk_phrases_filtered(m, root):
     assert not any("," in g or ":" in g for g in got), got
 
 
+def test_project_root_relocates_miner_output(m, root):
+    """Mining another project used to write its aliases into THIS project's
+    learned vocabulary."""
+    target = root / "elsewhere"
+    target.mkdir(parents=True)
+    m.configure_paths(target)
+    assert m.PROJECT_ROOT == target
+    for name in ("LEARNED_VOC", "MINE_CURSOR"):
+        p = getattr(m, name)
+        assert str(p).startswith(str(target)), f"{name} outside target: {p}"
+    assert m.LEARNED_VOC.parent.is_dir()
+
+
 def main() -> int:
     import inspect
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

@@ -36,6 +36,21 @@ LEARNED_VOC  = SCRIPT_DIR / "learned-vocabulary.json"
 MINE_CURSOR  = SCRIPT_DIR / ".mine-cursor.json"
 PROJECT_ROOT = SCRIPT_DIR.parent.parent
 
+
+def configure_paths(project_root: Path) -> None:
+    """Write mined aliases into project_root's map, not the script's own.
+
+    Previously --project-root selected whose TRANSCRIPTS to mine but left the
+    output pointed at the script's directory, so mining another project wrote
+    its aliases into this one's learned vocabulary.
+    """
+    global PROJECT_ROOT, LEARNED_VOC, MINE_CURSOR
+    PROJECT_ROOT = project_root
+    map_dir      = project_root / '.claude' / 'project-map'
+    LEARNED_VOC  = map_dir / 'learned-vocabulary.json'
+    MINE_CURSOR  = map_dir / '.mine-cursor.json'
+    map_dir.mkdir(parents=True, exist_ok=True)
+
 # ── Config ───────────────────────────────────────────────────────────────────
 MIN_SCORE        = 5.0     # Minimum score to include in vocabulary
 RECENCY_WINDOWS  = [       # (days_threshold, weight)
@@ -466,9 +481,8 @@ def main() -> None:
                         help='Ignore the incremental cursor and re-mine every transcript')
     args = parser.parse_args()
 
-    global PROJECT_ROOT
     if args.project_root:
-        PROJECT_ROOT = args.project_root.resolve()
+        configure_paths(args.project_root.resolve())
 
     print(f"[mine-sessions] Project root: {PROJECT_ROOT}")
 
