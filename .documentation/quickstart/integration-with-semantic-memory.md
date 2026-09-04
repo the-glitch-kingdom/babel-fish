@@ -1,8 +1,18 @@
+---
+title: Integration with semantic-memory
+tier: guide
+domains: [quickstart, troubleshooting]
+status: active
+last_updated: '2026-05-07'
+version: '1.0.0'
+purpose: Setup walkthrough and troubleshooting for consuming babel-fish project-map output from semantic-memory
+---
+
 # Integration with `semantic-memory`
 
 `semantic-memory` (formerly `semantic-sidekick`) is the unified memory-layer plugin for Claude Code. It consumes babel-fish's auto-generated project map as a **`project-map` corpus** and additionally extracts the `01-vocabulary.md` file into a structured `glossary.json` side-channel that powers translation verbs.
 
-This doc covers the consumer-side integration. For the data contract specification, see [`docs/glossary-contract.md`](./glossary-contract.md).
+This doc covers the consumer-side integration. For the data contract specification, see [`.documentation/api/glossary-contract.md`](../api/glossary-contract.md).
 
 ## How the integration works
 
@@ -83,7 +93,7 @@ semantic-memory tools | grep -E "translate|reverse_translate|list_vocabulary"
    ```
    (Or let the pre-commit hook do it automatically.)
 
-2. Edit `.babel-fish/01-vocabulary.md` to add new vocabulary terms (see [`docs/glossary-contract.md`](./glossary-contract.md) for format).
+2. Edit `.babel-fish/01-vocabulary.md` to add new vocabulary terms (see [`.documentation/api/glossary-contract.md`](../api/glossary-contract.md) for format).
 
 3. semantic-memory's file-watcher detects the change and re-extracts `glossary.json` within seconds.
 
@@ -169,7 +179,7 @@ No. Each project has its own `.babel-fish/` directory. Glossaries are per-projec
 
 ## See also
 
-- [`docs/glossary-contract.md`](./glossary-contract.md) — the data contract specification
+- [`.documentation/api/glossary-contract.md`](../api/glossary-contract.md) — the data contract specification
 - `docs/translation-verbs.md` — full reference for the three MCP verbs (TBD — separate doc, not yet written)
 - [semantic-memory `corpora.json` reference](https://github.com/TheGlitchKing/semantic-sidekick/blob/main/docs/corpora-json.md)
 - [semantic-memory smart-middle activation](https://github.com/TheGlitchKing/semantic-sidekick/blob/main/docs/smart-middle-activation.md)

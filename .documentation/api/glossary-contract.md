@@ -1,3 +1,13 @@
+---
+title: Babel-fish glossary contract
+tier: reference
+domains: [api, architecture]
+status: active
+last_updated: '2026-05-07'
+version: '1.0.0'
+purpose: Producer/consumer data contract for the 01-vocabulary.md glossary side-channel consumed by semantic-memory
+---
+
 # Babel-fish glossary contract
 
 This document specifies the structured contract between babel-fish (the producer) and semantic-memory (the consumer) for the vocabulary translation feature.
