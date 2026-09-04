@@ -2,3 +2,10 @@ node_modules/
 *.tgz
 .claude/.babel-fish-update-cache.json
 package-lock.json
+
+# hit-em-with-the-docs generated reports (timestamped, regenerated on every run)
+.documentation/reports/*.md
+.planning/
+
+# Python bytecode from the project-map scripts
+__pycache__/

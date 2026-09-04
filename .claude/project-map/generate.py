@@ -13,6 +13,7 @@ import ast
 import argparse
 import hashlib
 import json
+from fnmatch import fnmatch
 import re
 import subprocess
 import sys
@@ -53,13 +54,38 @@ def redact_secrets(text: str) -> str:
 # ── Checksum logic ───────────────────────────────────────────────────────────
 WATCHED_EXTENSIONS = {
     '.py', '.ts', '.tsx', '.js', '.jsx', '.go', '.java', '.kt',
-    '.yaml', '.yml', '.toml', '.json', '.prisma', '.sql', '.env',
+    '.yaml', '.yml', '.toml', '.json', '.prisma', '.sql', '.env', '.sh',
 }
 WATCHED_NAMES = {
     'docker-compose.yml', 'docker-compose.yaml', 'docker-compose.dev.yml',
     'package.json', 'requirements.txt', 'pyproject.toml', 'go.mod',
     'Cargo.toml', 'pom.xml', 'Gemfile', 'Makefile',
 }
+# Skill/command manifests — matched by path shape, not by extension, so
+# documentation .md files stay out of the watch set. fnmatch runs against the
+# repo-relative posix path, which anchors the glob at the root:
+# ".documentation/reference/commands/cli.md" does not match "commands/*.md".
+WATCHED_GLOBS = (
+    'skills/*/SKILL.md',
+    'commands/*.md',
+    # Dead until '.claude' leaves IGNORE_DIRS; kept as the anchor for when it does.
+    '.claude/skills/*/SKILL.md',
+    '.claude/commands/*.md',
+)
+
+# Directories build_doc_pointers_section() walks. Watched by PATH ONLY (no
+# mtime) so adding or removing a doc refreshes section 19 while editing one
+# does not churn the whole map.
+DOC_DIRS = ['docs', 'doc', 'documentation', 'wiki', '.docs', '.documentation']
+DOC_EXTS = {'.md', '.rst', '.txt', '.adoc'}
+# Auto-generated navigation, not documentation. A hit-em-with-the-docs tree
+# carries one INDEX.md + REGISTRY.md per domain (32 files for 15 domains), which
+# would otherwise crowd every real doc out of section 19's 30-entry cap.
+DOC_SKIP_NAMES = {'INDEX.md', 'REGISTRY.md'}
+# hewtd excludes archive/ from all of its own scans; deprecated docs are not
+# pointers worth handing an agent.
+DOC_SKIP_DIRS = {'archive'}
+
 IGNORE_DIRS = {
     '.git', 'node_modules', '__pycache__', '.venv', 'venv', 'env',
     'dist', 'build', '.next', '.nuxt', 'target', 'vendor', '.cache',
@@ -71,11 +97,34 @@ def collect_watched_files() -> list[Path]:
     for path in sorted(PROJECT_ROOT.rglob('*')):
         if any(p in IGNORE_DIRS for p in path.parts):
             continue
-        if path.is_file() and (path.suffix in WATCHED_EXTENSIONS or path.name in WATCHED_NAMES):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(PROJECT_ROOT).as_posix()
+        if (path.suffix in WATCHED_EXTENSIONS
+                or path.name in WATCHED_NAMES
+                or any(fnmatch(rel, g) for g in WATCHED_GLOBS)):
             result.append(path)
     return result
 
-def compute_checksum(files: list[Path]) -> str:
+
+def collect_doc_files() -> list[Path]:
+    """Docs section 19 points at. Hashed by path only — see compute_checksum."""
+    docs = []
+    for doc_dir in DOC_DIRS:
+        d = PROJECT_ROOT / doc_dir
+        if d.is_dir():
+            docs.extend(
+                f for f in d.rglob('*')
+                if f.is_file()
+                and f.suffix in DOC_EXTS
+                and f.name not in DOC_SKIP_NAMES
+                and not (DOC_SKIP_DIRS & set(f.relative_to(PROJECT_ROOT).parts))
+            )
+    # Root-level docs, matching build_doc_pointers_section()'s own glob.
+    docs.extend(f for f in PROJECT_ROOT.glob('*.md') if f.is_file())
+    return sorted(set(docs))
+
+def compute_checksum(files: list[Path], doc_files: list[Path] | None = None) -> str:
     h = hashlib.sha256()
     for f in files:
         h.update(str(f).encode())
@@ -83,6 +132,11 @@ def compute_checksum(files: list[Path]) -> str:
             h.update(str(f.stat().st_mtime_ns).encode())
         except OSError:
             pass
+    # ponytail: path only, no mtime — a new/renamed/deleted doc regenerates the
+    # section 19 pointer list, an edited one doesn't. Hashing doc mtimes would
+    # force a full regeneration on every prose edit.
+    for f in doc_files or []:
+        h.update(str(f).encode())
     return h.hexdigest()
 
 def load_checksums() -> dict:
@@ -710,8 +764,19 @@ class VocabularyBuilder:
         schemas: list[dict],
         features: list[dict],
         stack: dict,
+        skills: list[dict] | None = None,
     ) -> list[dict]:
         vocab: dict[str, dict] = {}
+
+        # From skills and slash commands. In a plugin repo this is the only
+        # source that fires — there are no routes or models to mine.
+        for sk in skills or []:
+            note = sk['description'][:120] if sk['description'] else f"{sk['kind']} manifest"
+            for alias in self._name_to_aliases(sk['name']):
+                self._add(vocab, alias, sk['kind'], sk['file'], note)
+            if sk['kind'] == 'command':
+                # humans say "/status" as often as "status"
+                self._add(vocab, f"/{sk['name']}", 'command', sk['file'], note)
 
         # From features
         for feat in features:
@@ -781,6 +846,98 @@ class VocabularyBuilder:
         return {}
 
 
+# ── Skill / Command Manifest Parser ───────────────────────────────────────────
+
+class SkillParser:
+    """Claude skill and slash-command manifests.
+
+    In a plugin/skill repo these ARE the source: there are no routes or models
+    to extract, but a skill's frontmatter name + description is literally an
+    alias -> location pair, which is what section 01 wants.
+
+    The .claude/* patterns are globbed directly, the same way ToolsScanner
+    reaches .claude/skills, so a consuming project's installed skills are
+    picked up even though '.claude' is in IGNORE_DIRS. Those files are parsed
+    but not watched, so they refresh on the next regeneration rather than
+    immediately — see WATCHED_GLOBS.
+    """
+
+    PATTERNS = (
+        ('skills/*/SKILL.md', 'skill'),
+        ('.claude/skills/*/SKILL.md', 'skill'),
+        ('commands/*.md', 'command'),
+        ('.claude/commands/*.md', 'command'),
+    )
+
+    def parse(self) -> list[dict]:
+        found: dict[str, dict] = {}
+        for pattern, kind in self.PATTERNS:
+            for f in sorted(PROJECT_ROOT.glob(pattern)):
+                meta = self._frontmatter(f)
+                if meta is None:
+                    continue
+                # commands carry no 'name:' — the filename is the command.
+                name = str(meta.get('name') or '').strip()
+                if not name:
+                    name = f.parent.name if f.name == 'SKILL.md' else f.stem
+                desc = ' '.join(str(meta.get('description') or '').split())
+                rel = str(f.relative_to(PROJECT_ROOT))
+                found.setdefault(rel, {
+                    'name': name,
+                    'kind': kind,
+                    'file': rel,
+                    'description': desc,
+                })
+        return list(found.values())
+
+    def _frontmatter(self, f: Path) -> dict | None:
+        """Leading --- ... --- YAML block, or None when absent/unparseable."""
+        try:
+            text = f.read_text(encoding='utf-8', errors='replace')
+        except OSError:
+            return None
+        if not text.startswith('---'):
+            return None
+        end = text.find('\n---', 3)
+        if end == -1:
+            return None
+        block = text[3:end]
+        if HAS_YAML:
+            try:
+                data = yaml.safe_load(block)
+                if isinstance(data, dict):
+                    return data
+            except Exception:
+                pass
+        return self._frontmatter_regex(block)
+
+    def _frontmatter_regex(self, block: str) -> dict:
+        """pyyaml-free fallback. Handles 'key: value' and 'key: |' blocks —
+        enough for name/description, which is all this parser reads."""
+        out: dict[str, str] = {}
+        lines = block.splitlines()
+        i = 0
+        while i < len(lines):
+            m = re.match(r'^([A-Za-z_][\w-]*):\s*(.*)$', lines[i])
+            if not m:
+                i += 1
+                continue
+            key, val = m.group(1), m.group(2).strip()
+            if val in ('|', '>', '|-', '>-', ''):
+                # block scalar: consume the indented run beneath it
+                body, i = [], i + 1
+                while i < len(lines) and (not lines[i].strip() or lines[i][:1] in (' ', '\t')):
+                    body.append(lines[i].strip())
+                    i += 1
+                joined = ' '.join(x for x in body if x)
+                if joined:
+                    out[key] = joined
+                continue
+            out[key] = val.strip('"\'')
+            i += 1
+        return out
+
+
 # ── Tools & Commands Scanner ──────────────────────────────────────────────────
 
 class ToolsScanner:
@@ -826,6 +983,22 @@ class ToolsScanner:
             for skill_dir in skills_dir.iterdir():
                 if (skill_dir / 'SKILL.md').exists():
                     tools.append({'name': f'/{skill_dir.name}', 'command': f'/{skill_dir.name}', 'description': 'Claude skill', 'source': 'skills'})
+
+        # Slash commands — commands/*.md and .claude/commands/*.md
+        seen = {t['name'] for t in tools}
+        for manifest in SkillParser().parse():
+            if manifest['kind'] != 'command':
+                continue
+            name = f"/{manifest['name']}"
+            if name in seen:
+                continue
+            seen.add(name)
+            tools.append({
+                'name': name,
+                'command': name,
+                'description': manifest['description'] or 'slash command',
+                'source': 'commands',
+            })
 
         return tools
 
@@ -1260,20 +1433,9 @@ def build_dead_code_section(candidates: list[dict]) -> str:
 
 def build_doc_pointers_section() -> str:
     lines = ["# Section 19 — Documentation Pointers\n\n"]
-    docs = []
-    doc_dirs = ['docs', 'doc', 'documentation', 'wiki', '.docs']
-    doc_exts = {'.md', '.rst', '.txt', '.adoc'}
-
-    for doc_dir in doc_dirs:
-        d = PROJECT_ROOT / doc_dir
-        if d.is_dir():
-            for f in sorted(d.rglob('*')):
-                if f.is_file() and f.suffix in doc_exts:
-                    docs.append(str(f.relative_to(PROJECT_ROOT)))
-
-    # Root-level docs
-    for f in PROJECT_ROOT.glob('*.md'):
-        docs.append(str(f.relative_to(PROJECT_ROOT)))
+    # Same walk the checksum watches (DOC_DIRS/DOC_EXTS), so the pointer list and
+    # the watch set cannot drift apart.
+    docs = [str(f.relative_to(PROJECT_ROOT)) for f in collect_doc_files()]
 
     if not docs:
         lines.append("_No documentation files found._\n")
@@ -1392,7 +1554,7 @@ def main() -> None:
 
     # 1. Checksum check
     watched = collect_watched_files()
-    checksum = compute_checksum(watched)
+    checksum = compute_checksum(watched, collect_doc_files())
 
     if not args.force and is_unchanged(checksum):
         print("[generate] ✓ No changes detected — skipping regeneration (use --force to override)")
@@ -1434,12 +1596,13 @@ def main() -> None:
     env_entries = EnvParser().parse()
     migrations = MigrationParser().parse()
     features = FrontendScanner().scan()
+    skills = SkillParser().parse()
     tools = ToolsScanner().scan()
     auth_info = AuthScanner().scan()
     proxy_rules = ReverseProxyScanner().scan()
 
     print("[generate] Building vocabulary...")
-    vocab = VocabularyBuilder().build(routes, models, schemas, features, stack)
+    vocab = VocabularyBuilder().build(routes, models, schemas, features, stack, skills)
 
     print("[generate] Tracing import chains...")
     chains = ImportChainTracer().trace(routes)

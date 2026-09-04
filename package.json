@@ -1,13 +1,14 @@
 {
   "name": "@theglitchking/babel-fish",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "description": "Gives your AI coding assistant instant, accurate knowledge of every route, model, service, feature, and infrastructure element in your codebase.",
   "type": "module",
   "bin": {
     "babel-fish": "bin/babel-fish.js"
   },
   "scripts": {
-    "postinstall": "node scripts/link-skills.js"
+    "postinstall": "node scripts/link-skills.js",
+    "test": "python3 .claude/project-map/test_generate.py"
   },
   "files": [
     "bin/",
