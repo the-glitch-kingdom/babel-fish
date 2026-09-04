@@ -52,7 +52,7 @@ purpose: Navigation hub for all documentation
 
 | Document | Tier | Status | Updated |
 |----------|------|--------|----------|
-| [Babel-fish glossary contract](api/glossary-contract.md) | reference | active | 2026-05-07 |
+| [Babel-fish glossary contract](api/glossary-contract.md) | reference | active | 2026-09-04 |
 | [Skill parser contract](api/skill-parser-contract.md) | reference | active | 2026-09-04 |
 
 ---
@@ -139,7 +139,7 @@ purpose: Navigation hub for all documentation
 
 | Document | Tier | Status | Updated |
 |----------|------|--------|----------|
-| [Integration with semantic-memory](quickstart/integration-with-semantic-memory.md) | guide | active | 2026-05-07 |
+| [Integration with semantic-memory](quickstart/integration-with-semantic-memory.md) | guide | active | 2026-09-04 |
 
 ---
 

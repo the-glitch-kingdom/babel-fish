@@ -25,7 +25,7 @@ purpose: Complete listing of quickstart documentation
 
 | Document | Status | Updated | Words |
 |----------|--------|---------|-------|
-| [Integration with semantic-memory](integration-with-semantic-memory.md) | active | 2026-05-07 | 695 |
+| [Integration with semantic-memory](integration-with-semantic-memory.md) | active | 2026-09-04 | 438 |
 
 ## Keywords
 

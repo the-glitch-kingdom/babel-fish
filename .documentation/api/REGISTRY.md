@@ -27,8 +27,8 @@ purpose: Quick reference for api documentation
 
 ## Recently Updated
 
+- [Babel-fish glossary contract](glossary-contract.md) - 2026-09-04
 - [Skill parser contract](skill-parser-contract.md) - 2026-09-04
-- [Babel-fish glossary contract](glossary-contract.md) - 2026-05-07
 
 ## By Status
 

@@ -2,6 +2,57 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2026-09-04
+
+### Added
+
+- **`glossary.json` — a structured vocabulary artifact for machine consumers**
+  ([#10](https://github.com/TheGlitchKing/babel-fish/issues/10)). Written to
+  `.claude/project-map/glossary.json` on every map build and staged by the
+  pre-commit hook. Consumers read this instead of parsing `01-vocabulary.md`.
+
+  The markdown was never a good parsing target: its `Notes` column mixes
+  descriptions with metadata, and pipe-escaping leaks into values — this repo's
+  own output contained `(auto \| nudge \| off)`. The JSON carries the real
+  string.
+
+### Fixed
+
+- **The glossary contract described a format babel-fish has never emitted.**
+  `glossary-contract.md` v1.0 specified bullet entries
+  (`- **key** → \`path\` — desc`) and stated that non-conforming bullets are
+  ignored; the generator has always written a markdown table. A consumer built
+  strictly to that spec would extract **zero entries**. Rewritten (v2.0) around
+  `glossary.json`, with the markdown documented as human-facing output that is
+  not parsed.
+
+- **Both sides of that contract documented a directory neither produces.** The
+  contract, the integration guide and the README referred to `.babel-fish/`;
+  babel-fish writes `.claude/project-map/`. The same error is mirrored in
+  semantic-memory's `smart-middle-activation.md` and `corpora-json.md`, where it
+  would have made Phase 3.1.0 find nothing — silently. Corrected here and filed
+  there as
+  [semantic-memory#28](https://github.com/the-glitch-kingdom/semantic-memory/issues/28).
+
+- **`--project-root` crashed the generator.** `write_glossary()` computed the
+  source path with `SECTIONS_DIR.relative_to(PROJECT_ROOT)`, but `SECTIONS_DIR`
+  is bound to the script's own location, so pointing `--project-root` elsewhere
+  raised `ValueError`. Found by a test written for the new artifact.
+
+- `integration-with-semantic-memory.md` no longer describes a setup that does
+  not exist. semantic-memory 1.5.1 ships no `translate` verbs, no `project-map`
+  corpus and no glossary reader; the guide now says so at the top instead of
+  giving instructions for it.
+
+### Note
+
+The consumer is unbuilt, so nothing was pinned to the old format. Issue #10
+originally advised caution about "a breaking change to a format a downstream
+consumer pins to" — checking semantic-memory's source showed zero
+`translate`/`reverse_translate`/`list_vocabulary` verbs in its 164-entry tool
+surface and no `glossary` string in `src/`. That freed the format choice
+entirely.
+
 ## [2.3.0] - 2026-09-04
 
 ### Fixed
