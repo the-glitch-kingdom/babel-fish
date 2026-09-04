@@ -36,6 +36,21 @@ All notable changes to this project will be documented in this file.
   "No" (`_Note`, `_Nothing`) anywhere in `12-import-chains.md` scored a
   populated section as an acceptable empty one at a flat 80%.
 
+### Fixed (packaging)
+
+- **The npm tarball shipped local and generated files.** `files` listed
+  `.claude/` wholesale, and npm does **not** honour `.gitignore` for paths named
+  there — so every release carried this repo's own generated project map,
+  another plugin's local state (`.claude/.semantic-memory/`), five plugins'
+  update caches, ~150 kB of `__pycache__` bytecode, and
+  `.claude/settings.local.json`. `files` now lists only what
+  `.claude/install.sh` actually copies plus the test suites. Also anchored
+  `checksums.json` to `./checksums.json`: a bare filename in `files` globs at
+  any depth, so it was matching `.claude/project-map/checksums.json` too.
+
+  Tarball: 76 files / 140.9 kB → **33 files / 65.6 kB**. Verified by installing
+  from the packed tarball into a scratch project.
+
 ### Added
 
 - 9 tests in `test_grader.py`, 7 of which fail against the previous code.
