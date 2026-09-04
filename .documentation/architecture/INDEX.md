@@ -14,20 +14,19 @@ purpose: Complete listing of architecture documentation
 
 ## Overview
 
-- **Total Documents:** 0
+- **Total Documents:** 1
 - **Domain:** `architecture/`
 - **Category:** development
 - **Load Priority:** 7/10
 
 ## Documents
 
-*No documents in this domain yet.*
+### References
 
-To add a document:
+| Document | Status | Updated | Words |
+|----------|--------|---------|-------|
+| [Project map watch set](project-map-watch-set.md) | active | 2026-09-04 | 689 |
 
-1. Create a markdown file in this directory
-2. Add YAML frontmatter with required metadata
-3. Run `npx hit-em-with-the-docs integrate <file>`
 ## Keywords
 
 This domain covers: architecture, design, system, system-design, pattern, patterns, microservices, monolith, serverless, event-driven

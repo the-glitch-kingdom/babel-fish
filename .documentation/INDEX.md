@@ -17,8 +17,8 @@ purpose: Navigation hub for all documentation
 | Domain | Documents | Description |
 |--------|-----------|-------------|
 | [Agents](#agents) | 0 | Expert agent documentation, specialty matrix |
-| [API](#api) | 1 | API endpoints, routes, specifications, contracts |
-| [Architecture](#architecture) | 0 | System design, AI coach, project registry, patterns |
+| [API](#api) | 2 | API endpoints, routes, specifications, contracts |
+| [Architecture](#architecture) | 1 | System design, AI coach, project registry, patterns |
 | [Backups](#backups) | 0 | Backup/restore guides, disaster recovery |
 | [Database](#database) | 0 | Schema, migrations, RLS, queries, procedures |
 | [DevOps](#devops) | 0 | Deployment, CI/CD, Docker, environments, infrastructure |
@@ -29,7 +29,7 @@ purpose: Navigation hub for all documentation
 | [Security](#security) | 0 | Security, auth, Vault, Keycloak, RLS |
 | [Standards](#standards) | 0 | Coding standards (backend, frontend, database, devops, security) |
 | [Testing](#testing) | 0 | Test strategies, fixtures, patterns, integration/e2e |
-| [Troubleshooting](#troubleshooting) | 0 | Debug guides, common issues, solutions |
+| [Troubleshooting](#troubleshooting) | 1 | Debug guides, common issues, solutions |
 | [Workflows](#workflows) | 0 | Process documentation, multi-step operations |
 
 ---
@@ -53,6 +53,7 @@ purpose: Navigation hub for all documentation
 | Document | Tier | Status | Updated |
 |----------|------|--------|----------|
 | [Babel-fish glossary contract](api/glossary-contract.md) | reference | active | 2026-05-07 |
+| [Skill parser contract](api/skill-parser-contract.md) | reference | active | 2026-09-04 |
 
 ---
 
@@ -62,7 +63,9 @@ purpose: Navigation hub for all documentation
 
 **Path:** `architecture/`
 
-*No documents yet.*
+| Document | Tier | Status | Updated |
+|----------|------|--------|----------|
+| [Project map watch set](architecture/project-map-watch-set.md) | reference | active | 2026-09-04 |
 
 ---
 
@@ -174,7 +177,9 @@ purpose: Navigation hub for all documentation
 
 **Path:** `troubleshooting/`
 
-*No documents yet.*
+| Document | Tier | Status | Updated |
+|----------|------|--------|----------|
+| [Project map is empty or stale](troubleshooting/map-is-empty.md) | guide | active | 2026-09-04 |
 
 ---
 

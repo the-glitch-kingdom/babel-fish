@@ -2,6 +2,64 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2026-09-04
+
+### Fixed
+
+- **Plugin and skill repositories no longer generate an empty project map**
+  ([#6](https://github.com/TheGlitchKing/babel-fish/issues/6)). Run babel-fish
+  against a repo of markdown skills, slash commands and bash scripts and every
+  one of the 19 sections came back a "none detected" stub. Two causes, both
+  fixed:
+
+  - The checksum was blind to the files that define such a repo.
+    `collect_watched_files()` returned 11 files for babel-fish's own repository,
+    with no `.md` and no `.sh`, so editing a `SKILL.md` left the checksum
+    bit-identical and `is_unchanged()` exited before parsing. Skill and command
+    manifests are now matched by path glob (`skills/*/SKILL.md`,
+    `commands/*.md`), and `.sh` joins `WATCHED_EXTENSIONS`.
+  - Nothing read those manifests. `SkillParser` now feeds skill and command
+    frontmatter into section 01 (vocabulary) and section 10 (tools) — the two
+    sections they already fit. No new sections, no renumbering.
+
+  Measured on this repository: 0 vocabulary entries to 10, sections 2,589 bytes
+  to 4,389. On `hit-em-with-the-docs`, an unrelated plugin repo: 0 to 30.
+
+- **Section 19 missed `.documentation/` trees and went stale silently.** Doc
+  directories were never watched, so adding a document did not move the
+  checksum and the pointer list rotted until an unrelated source file happened
+  to change. Doc paths are now hashed **without** mtime: adding, renaming or
+  deleting a document refreshes section 19, while editing one does not force a
+  full regeneration. `.documentation` joins the doc directories, and generated
+  navigation (`INDEX.md`, `REGISTRY.md`) plus `archive/` are excluded — without
+  that, a 15-domain tree contributes 32 nav files and crowds every real
+  document out of the 30-entry cap.
+
+- **`checksums.json` was stale**, so the documented curl installer aborted with
+  `CHECKSUM MISMATCH` for everyone. `.claude/install.sh` was edited in `da8d2f7`
+  without regenerating the manifest.
+
+### Added
+
+- First tests in the repository: `npm test` runs an 8-test regression suite over
+  a fixture repo shaped like #6. Stdlib `assert`, no framework. Verified to fail
+  7/8 against the pre-fix generator rather than merely passing after it.
+- `.documentation/` docs for the watch set, the skill parser contract, and an
+  empty/stale map troubleshooting guide; operational runbook gained the
+  corresponding gotchas.
+
+### Known issues
+
+- `grader.py` scores a completely empty map at 97.0% PASS, the same as a fully
+  populated one — "Vocabulary Accuracy" is 100% on zero entries because
+  0/0 = 100. It measures well-formedness, not usefulness, and must not be used
+  to confirm an extractor fix. Left unchanged here: adding a floor would fail
+  existing installs that currently pass.
+- `01-vocabulary.md` is emitted as a markdown table, while
+  `.documentation/api/glossary-contract.md` specifies `- **key** → \`path\``
+  bullets. A consumer implemented strictly to that contract extracts zero
+  entries. Predates this release; which side moves is undecided.
+
 ## [2.0.3] - 2026-06-08
 
 ### Fixed

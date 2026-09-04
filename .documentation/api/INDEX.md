@@ -14,7 +14,7 @@ purpose: Complete listing of api documentation
 
 ## Overview
 
-- **Total Documents:** 1
+- **Total Documents:** 2
 - **Domain:** `api/`
 - **Category:** core
 - **Load Priority:** 8/10
@@ -26,6 +26,7 @@ purpose: Complete listing of api documentation
 | Document | Status | Updated | Words |
 |----------|--------|---------|-------|
 | [Babel-fish glossary contract](glossary-contract.md) | active | 2026-05-07 | 1,148 |
+| [Skill parser contract](skill-parser-contract.md) | active | 2026-09-04 | 566 |
 
 ## Keywords
 

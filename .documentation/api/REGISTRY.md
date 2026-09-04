@@ -16,23 +16,25 @@ purpose: Quick reference for api documentation
 
 | Metric | Value |
 |--------|-------|
-| Documents | 1 |
+| Documents | 2 |
 | Category | core |
 | Load Priority | 8/10 |
 
 ## Active Documents
 
 - [Babel-fish glossary contract](glossary-contract.md)
+- [Skill parser contract](skill-parser-contract.md)
 
 ## Recently Updated
 
+- [Skill parser contract](skill-parser-contract.md) - 2026-09-04
 - [Babel-fish glossary contract](glossary-contract.md) - 2026-05-07
 
 ## By Status
 
 | Status | Count |
 |--------|-------|
-| active | 1 |
+| active | 2 |
 | draft | 0 |
 | deprecated | 0 |
 | archived | 0 |

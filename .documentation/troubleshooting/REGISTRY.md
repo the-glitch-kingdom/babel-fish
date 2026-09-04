@@ -16,13 +16,26 @@ purpose: Quick reference for troubleshooting documentation
 
 | Metric | Value |
 |--------|-------|
-| Documents | 0 |
+| Documents | 1 |
 | Category | advanced |
 | Load Priority | 6/10 |
 
-## Documents
+## Active Documents
 
-*No documents in this domain yet.*
+- [Project map is empty or stale](map-is-empty.md)
+
+## Recently Updated
+
+- [Project map is empty or stale](map-is-empty.md) - 2026-09-04
+
+## By Status
+
+| Status | Count |
+|--------|-------|
+| active | 1 |
+| draft | 0 |
+| deprecated | 0 |
+| archived | 0 |
 
 ## Keywords
 

@@ -16,13 +16,26 @@ purpose: Quick reference for architecture documentation
 
 | Metric | Value |
 |--------|-------|
-| Documents | 0 |
+| Documents | 1 |
 | Category | development |
 | Load Priority | 7/10 |
 
-## Documents
+## Active Documents
 
-*No documents in this domain yet.*
+- [Project map watch set](project-map-watch-set.md)
+
+## Recently Updated
+
+- [Project map watch set](project-map-watch-set.md) - 2026-09-04
+
+## By Status
+
+| Status | Count |
+|--------|-------|
+| active | 1 |
+| draft | 0 |
+| deprecated | 0 |
+| archived | 0 |
 
 ## Keywords
 
