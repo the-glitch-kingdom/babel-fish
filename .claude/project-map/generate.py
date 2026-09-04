@@ -764,8 +764,19 @@ class VocabularyBuilder:
         schemas: list[dict],
         features: list[dict],
         stack: dict,
+        skills: list[dict] | None = None,
     ) -> list[dict]:
         vocab: dict[str, dict] = {}
+
+        # From skills and slash commands. In a plugin repo this is the only
+        # source that fires — there are no routes or models to mine.
+        for sk in skills or []:
+            note = sk['description'][:120] if sk['description'] else f"{sk['kind']} manifest"
+            for alias in self._name_to_aliases(sk['name']):
+                self._add(vocab, alias, sk['kind'], sk['file'], note)
+            if sk['kind'] == 'command':
+                # humans say "/status" as often as "status"
+                self._add(vocab, f"/{sk['name']}", 'command', sk['file'], note)
 
         # From features
         for feat in features:
@@ -835,6 +846,98 @@ class VocabularyBuilder:
         return {}
 
 
+# ── Skill / Command Manifest Parser ───────────────────────────────────────────
+
+class SkillParser:
+    """Claude skill and slash-command manifests.
+
+    In a plugin/skill repo these ARE the source: there are no routes or models
+    to extract, but a skill's frontmatter name + description is literally an
+    alias -> location pair, which is what section 01 wants.
+
+    The .claude/* patterns are globbed directly, the same way ToolsScanner
+    reaches .claude/skills, so a consuming project's installed skills are
+    picked up even though '.claude' is in IGNORE_DIRS. Those files are parsed
+    but not watched, so they refresh on the next regeneration rather than
+    immediately — see WATCHED_GLOBS.
+    """
+
+    PATTERNS = (
+        ('skills/*/SKILL.md', 'skill'),
+        ('.claude/skills/*/SKILL.md', 'skill'),
+        ('commands/*.md', 'command'),
+        ('.claude/commands/*.md', 'command'),
+    )
+
+    def parse(self) -> list[dict]:
+        found: dict[str, dict] = {}
+        for pattern, kind in self.PATTERNS:
+            for f in sorted(PROJECT_ROOT.glob(pattern)):
+                meta = self._frontmatter(f)
+                if meta is None:
+                    continue
+                # commands carry no 'name:' — the filename is the command.
+                name = str(meta.get('name') or '').strip()
+                if not name:
+                    name = f.parent.name if f.name == 'SKILL.md' else f.stem
+                desc = ' '.join(str(meta.get('description') or '').split())
+                rel = str(f.relative_to(PROJECT_ROOT))
+                found.setdefault(rel, {
+                    'name': name,
+                    'kind': kind,
+                    'file': rel,
+                    'description': desc,
+                })
+        return list(found.values())
+
+    def _frontmatter(self, f: Path) -> dict | None:
+        """Leading --- ... --- YAML block, or None when absent/unparseable."""
+        try:
+            text = f.read_text(encoding='utf-8', errors='replace')
+        except OSError:
+            return None
+        if not text.startswith('---'):
+            return None
+        end = text.find('\n---', 3)
+        if end == -1:
+            return None
+        block = text[3:end]
+        if HAS_YAML:
+            try:
+                data = yaml.safe_load(block)
+                if isinstance(data, dict):
+                    return data
+            except Exception:
+                pass
+        return self._frontmatter_regex(block)
+
+    def _frontmatter_regex(self, block: str) -> dict:
+        """pyyaml-free fallback. Handles 'key: value' and 'key: |' blocks —
+        enough for name/description, which is all this parser reads."""
+        out: dict[str, str] = {}
+        lines = block.splitlines()
+        i = 0
+        while i < len(lines):
+            m = re.match(r'^([A-Za-z_][\w-]*):\s*(.*)$', lines[i])
+            if not m:
+                i += 1
+                continue
+            key, val = m.group(1), m.group(2).strip()
+            if val in ('|', '>', '|-', '>-', ''):
+                # block scalar: consume the indented run beneath it
+                body, i = [], i + 1
+                while i < len(lines) and (not lines[i].strip() or lines[i][:1] in (' ', '\t')):
+                    body.append(lines[i].strip())
+                    i += 1
+                joined = ' '.join(x for x in body if x)
+                if joined:
+                    out[key] = joined
+                continue
+            out[key] = val.strip('"\'')
+            i += 1
+        return out
+
+
 # ── Tools & Commands Scanner ──────────────────────────────────────────────────
 
 class ToolsScanner:
@@ -880,6 +983,22 @@ class ToolsScanner:
             for skill_dir in skills_dir.iterdir():
                 if (skill_dir / 'SKILL.md').exists():
                     tools.append({'name': f'/{skill_dir.name}', 'command': f'/{skill_dir.name}', 'description': 'Claude skill', 'source': 'skills'})
+
+        # Slash commands — commands/*.md and .claude/commands/*.md
+        seen = {t['name'] for t in tools}
+        for manifest in SkillParser().parse():
+            if manifest['kind'] != 'command':
+                continue
+            name = f"/{manifest['name']}"
+            if name in seen:
+                continue
+            seen.add(name)
+            tools.append({
+                'name': name,
+                'command': name,
+                'description': manifest['description'] or 'slash command',
+                'source': 'commands',
+            })
 
         return tools
 
@@ -1477,12 +1596,13 @@ def main() -> None:
     env_entries = EnvParser().parse()
     migrations = MigrationParser().parse()
     features = FrontendScanner().scan()
+    skills = SkillParser().parse()
     tools = ToolsScanner().scan()
     auth_info = AuthScanner().scan()
     proxy_rules = ReverseProxyScanner().scan()
 
     print("[generate] Building vocabulary...")
-    vocab = VocabularyBuilder().build(routes, models, schemas, features, stack)
+    vocab = VocabularyBuilder().build(routes, models, schemas, features, stack, skills)
 
     print("[generate] Tracing import chains...")
     chains = ImportChainTracer().trace(routes)
