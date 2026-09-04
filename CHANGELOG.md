@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.1] - 2026-09-04
+
+### Fixed
+
+- **`--project-root` changed only the read root**
+  ([#15](https://github.com/TheGlitchKing/babel-fish/issues/15)). All three
+  scripts kept writing to the directory the script itself lives in, so pointing
+  the flag at another project silently corrupted the script's own map instead of
+  mapping the target:
+
+  - `generate.py` wrote the map into its own directory — the target got nothing,
+    and the script repo's `sections/`, `glossary.json` and `checksums.json` were
+    overwritten, while the run reported success.
+  - `grader.py` graded its **own** sections while validating vocabulary paths
+    against the **target's** filesystem, producing a confident but meaningless
+    score (0% vocabulary accuracy, 77% FAIL). The nastiest of the three: it
+    neither crashed nor produced nothing.
+  - `mine-sessions.py` mined the target's transcripts and wrote the aliases into
+    its own `learned-vocabulary.json` and `.mine-cursor.json`.
+
+  Each script gained `configure_paths()`, called from `main()` after argument
+  parsing, which relocates every output under `<project-root>/.claude/project-map/`.
+  Module-level defaults are unchanged, so the common case and the test suites
+  are unaffected.
+
+  Not reachable during install: `.claude/install.sh` runs the copied scripts
+  inside the target, where `SCRIPT_DIR` and `--project-root` coincide. The
+  pre-commit hook and `babel-fish regen` / `grade` pass no `--project-root`.
+  Verified by a full install after the change.
+
 ## [2.4.0] - 2026-09-04
 
 ### Added

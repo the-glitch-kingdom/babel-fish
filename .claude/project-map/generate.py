@@ -44,6 +44,24 @@ PROJECT_ROOT = MAP_DIR.parent.parent
 
 SECTIONS_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def configure_paths(project_root: Path) -> None:
+    """Point every output at <project_root>/.claude/project-map/.
+
+    --project-root previously moved only the READ root: the map was written back
+    into whichever directory the script itself lived in, so mapping another
+    project produced nothing for the target and destroyed the script repo's own
+    map. Writes follow the root now.
+    """
+    global PROJECT_ROOT, MAP_DIR, SECTIONS_DIR, CHECKSUMS, LEARNED_VOC, GLOSSARY
+    PROJECT_ROOT = project_root
+    MAP_DIR      = project_root / '.claude' / 'project-map'
+    SECTIONS_DIR = MAP_DIR / 'sections'
+    CHECKSUMS    = MAP_DIR / 'checksums.json'
+    LEARNED_VOC  = MAP_DIR / 'learned-vocabulary.json'
+    GLOSSARY     = MAP_DIR / 'glossary.json'
+    SECTIONS_DIR.mkdir(parents=True, exist_ok=True)
+
 # ── Secrets guard ────────────────────────────────────────────────────────────
 SECRET_PATTERNS = re.compile(
     r'(?i)(password|secret|token|api_key|apikey|private_key|auth_token|'
@@ -1612,9 +1630,8 @@ def main() -> None:
     parser.add_argument('--stack-json', type=Path, default=None, help='Path to stack.json from detect-stack.sh')
     args = parser.parse_args()
 
-    global PROJECT_ROOT
     if args.project_root:
-        PROJECT_ROOT = args.project_root.resolve()
+        configure_paths(args.project_root.resolve())
 
     print(f"[generate] Project root: {PROJECT_ROOT}")
 

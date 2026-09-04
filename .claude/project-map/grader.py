@@ -32,6 +32,21 @@ PROJECT_ROOT = MAP_DIR.parent.parent
 
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
+
+def configure_paths(project_root: Path) -> None:
+    """Grade the map belonging to project_root, not the script's own.
+
+    Previously --project-root moved only the path-validation root, so the
+    script's own sections were graded against a different project's filesystem —
+    producing a confident but meaningless score (0% vocabulary accuracy).
+    """
+    global PROJECT_ROOT, MAP_DIR, SECTIONS_DIR, REPORTS_DIR
+    PROJECT_ROOT = project_root
+    MAP_DIR      = project_root / '.claude' / 'project-map'
+    SECTIONS_DIR = MAP_DIR / 'sections'
+    REPORTS_DIR  = MAP_DIR / 'reports'
+    REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
 PASS_THRESHOLD = 90.0
 
 # ── Secret pattern (mirrors generate.py) ─────────────────────────────────────
@@ -597,9 +612,8 @@ def main() -> None:
                         help='Override report output path')
     args = parser.parse_args()
 
-    global PROJECT_ROOT
     if args.project_root:
-        PROJECT_ROOT = args.project_root.resolve()
+        configure_paths(args.project_root.resolve())
 
     print(f"[grader] Grading iteration {args.iteration}/{args.total}...")
 

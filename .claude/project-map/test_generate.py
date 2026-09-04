@@ -237,6 +237,39 @@ def test_glossary_survives_foreign_project_root(g):
     assert data["source"].endswith("01-vocabulary.md"), data["source"]
 
 
+# ── --project-root write path (#15) ──────────────────────────────────────────
+
+def test_project_root_relocates_every_output(g):
+    """--project-root used to move only the READ root: the map was written back
+    into the script's own directory, so the target got nothing and the script
+    repo's map was destroyed."""
+    target = g.PROJECT_ROOT / "elsewhere"
+    (target / "src").mkdir(parents=True)
+    (target / "src" / "app.py").write_text("# app\n")
+
+    script_owned = g.MAP_DIR
+    g.configure_paths(target)
+
+    assert g.PROJECT_ROOT == target
+    for name in ("MAP_DIR", "SECTIONS_DIR", "CHECKSUMS", "LEARNED_VOC", "GLOSSARY"):
+        p = getattr(g, name)
+        assert str(p).startswith(str(target)), f"{name} still outside the target: {p}"
+        assert not str(p).startswith(str(script_owned)), f"{name} still in the script dir: {p}"
+    assert g.SECTIONS_DIR.is_dir(), "sections dir not created under the target"
+
+
+def test_project_root_writes_land_in_the_target(g):
+    import json
+    target = g.PROJECT_ROOT / "elsewhere"
+    target.mkdir(parents=True)
+    g.configure_paths(target)
+    g.write_glossary([{"alias": "x", "type": "feature",
+                       "location": "src/x.py", "notes": "n"}], g.load_stack())
+    written = target / ".claude" / "project-map" / "glossary.json"
+    assert written.exists(), "glossary.json was not written under the target"
+    assert json.loads(written.read_text())["entry_count"] == 1
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = []

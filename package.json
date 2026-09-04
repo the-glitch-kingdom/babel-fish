@@ -1,6 +1,6 @@
 {
   "name": "@theglitchking/babel-fish",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Gives your AI coding assistant instant, accurate knowledge of every route, model, service, feature, and infrastructure element in your codebase.",
   "type": "module",
   "bin": {
