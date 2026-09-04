@@ -9,3 +9,6 @@ package-lock.json
 
 # Python bytecode from the project-map scripts
 __pycache__/
+
+# Per-machine mining cursor (transcript mtimes) — not repo content
+.claude/project-map/.mine-cursor.json

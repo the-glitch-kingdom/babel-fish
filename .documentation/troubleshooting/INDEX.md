@@ -14,7 +14,7 @@ purpose: Complete listing of troubleshooting documentation
 
 ## Overview
 
-- **Total Documents:** 1
+- **Total Documents:** 2
 - **Domain:** `troubleshooting/`
 - **Category:** advanced
 - **Load Priority:** 6/10
@@ -25,6 +25,7 @@ purpose: Complete listing of troubleshooting documentation
 
 | Document | Status | Updated | Words |
 |----------|--------|---------|-------|
+| [Learned vocabulary is empty](learned-vocabulary-empty.md) | active | 2026-09-04 | 436 |
 | [Project map is empty or stale](map-is-empty.md) | active | 2026-09-04 | 674 |
 
 ## Keywords

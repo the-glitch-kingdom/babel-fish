@@ -31,6 +31,9 @@ from pathlib import Path
 # ── Paths ────────────────────────────────────────────────────────────────────
 SCRIPT_DIR   = Path(__file__).parent
 LEARNED_VOC  = SCRIPT_DIR / "learned-vocabulary.json"
+# Incremental cursor. Not merely a cost guard: merge_learned() ADDS scores, so
+# re-mining an already-counted transcript inflates it without bound.
+MINE_CURSOR  = SCRIPT_DIR / ".mine-cursor.json"
 PROJECT_ROOT = SCRIPT_DIR.parent.parent
 
 # ── Config ───────────────────────────────────────────────────────────────────
@@ -41,6 +44,7 @@ RECENCY_WINDOWS  = [       # (days_threshold, weight)
     (90,  0.25),
 ]
 MAX_ALIAS_WORDS  = 6       # Ignore user phrases longer than this
+MAX_LOOKAHEAD    = 120     # Messages scanned after a user turn for file activity
 MIN_ALIAS_WORDS  = 1
 STOP_WORDS = {
     'the', 'a', 'an', 'this', 'that', 'these', 'those', 'it', 'its',
@@ -61,6 +65,9 @@ FILE_TOOL_NAMES = {
     'read_file', 'edit_file', 'write_file',
 }
 
+# Tools whose arguments are a shell command rather than a file path.
+BASH_TOOL_NAMES = {'Bash', 'bash', 'run_command'}
+
 # ── Recency weight ────────────────────────────────────────────────────────────
 
 def recency_weight(session_date: datetime) -> float:
@@ -80,23 +87,27 @@ def find_session_files(project_root: Path) -> list[Path]:
     """Find Claude Code JSONL session files for this project."""
     candidates: list[Path] = []
 
-    # ~/.claude/projects/ uses a path-encoded slug
-    # e.g. /mnt/e/the-glitch-kingdom/babel-fish → -mnt-e-the-glitch-kingdom-babel-fish
-    encoded = str(project_root).replace('/', '-').lstrip('-')
+    # ~/.claude/projects/ uses a path-encoded slug that KEEPS the leading
+    # separator: /home/u/proj → -home-u-proj. Stripping it (the old
+    # .lstrip('-')) meant the exact match never once hit, and every lookup
+    # silently fell through to the fuzzy branch below.
+    encoded = str(project_root).replace('/', '-')
     claude_projects = Path.home() / '.claude' / 'projects'
 
     if not claude_projects.exists():
         return []
 
-    # Try exact match first
     exact = claude_projects / encoded
     if exact.is_dir():
-        candidates.extend(sorted(exact.glob('*.jsonl')))
+        return sorted(exact.glob('*.jsonl'))
 
-    # Also try fuzzy match on project name
+    # Fallback only when the exact directory is absent. Substring matching on
+    # the bare project name is not safe as an addition: "kentro" matches four
+    # unrelated project directories, whose aliases would then be attributed to
+    # this repo.
     project_name = project_root.name.lower()
-    for d in claude_projects.iterdir():
-        if d.is_dir() and project_name in d.name.lower() and d != exact:
+    for d in sorted(claude_projects.iterdir()):
+        if d.is_dir() and project_name in d.name.lower():
             candidates.extend(sorted(d.glob('*.jsonl')))
 
     return candidates
@@ -134,14 +145,81 @@ def extract_session_date(messages: list[dict]) -> datetime | None:
     return None
 
 
+# ── JSONL shape helpers ───────────────────────────────────────────────────────
+# Claude Code nests the API message under a "message" key: the role and content
+# live at msg["message"]["role"] / ["content"], not at the top level. Reading the
+# top level yielded 0 tool_use blocks and 0 user messages from a real 1.8 MB
+# transcript (see issue #7). Both shapes are accepted so older or third-party
+# transcripts still parse.
+
+def msg_content(msg: dict):
+    inner = msg.get('message')
+    if isinstance(inner, dict) and inner.get('content') is not None:
+        return inner['content']
+    return msg.get('content')
+
+
+def msg_role(msg: dict) -> str:
+    inner = msg.get('message')
+    if isinstance(inner, dict) and inner.get('role'):
+        return str(inner['role'])
+    return str(msg.get('role') or msg.get('type') or '')
+
+
+def is_user_turn(msg: dict) -> bool:
+    """A real user message, not a tool_result carrier.
+
+    Tool results are delivered with role="user": in a real transcript 167 of 181
+    role=user messages were tool_result blocks. Treating those as user turns
+    made the pairing window close on the assistant's own tool output.
+    """
+    if msg_role(msg) not in ('user', 'human'):
+        return False
+    # isMeta marks machine-injected text delivered in the user slot: skill
+    # bodies, slash-command definitions, hook output. Mining it learned aliases
+    # from the injected docs themselves ("block_index_edits", "superseded by v2
+    # guide", "refactor authentication system" — the last from a skill's own
+    # example). isSidechain marks subagent transcripts, which are not the user
+    # speaking either.
+    if msg.get('isMeta') or msg.get('isSidechain'):
+        return False
+    content = msg_content(msg)
+    if isinstance(content, str):
+        return bool(content.strip())
+    if isinstance(content, list):
+        return any(isinstance(b, dict) and b.get('type') == 'text' for b in content)
+    return False
+
+
+# Bash-mediated file access. A real session ran 148 Bash calls against 2 Read
+# and 2 Edit, so a miner that only understands the file tools sees almost
+# nothing. Candidate tokens are only accepted when they resolve to a file that
+# actually exists in the repo — a wrong alias asserted confidently is worse than
+# a missing one, so no cleverer shell parsing than this.
+BASH_TOKEN_RE = re.compile(r'[\w./-]*[\w-]\.[A-Za-z0-9]{1,6}\b')
+
+
+def extract_paths_from_bash(command: str, project_root: Path) -> list[str]:
+    out = []
+    for tok in BASH_TOKEN_RE.findall(command or ''):
+        tok = tok.strip("'\"()[]{},;:").lstrip('./')
+        if not tok or tok.startswith('-'):
+            continue
+        try:
+            if (project_root / tok).is_file():
+                out.append(tok)
+        except OSError:
+            pass
+    return out
+
+
 # ── Alias extraction ──────────────────────────────────────────────────────────
 
 def extract_file_paths_from_tool_calls(messages: list[dict]) -> list[str]:
     """Extract file paths from tool use calls in a message sequence."""
     paths = []
     for msg in messages:
-        # Handle various JSONL formats
-        content = msg.get('content') or []
+        content = msg_content(msg) or []
         if isinstance(content, str):
             continue
         for block in content:
@@ -150,6 +228,10 @@ def extract_file_paths_from_tool_calls(messages: list[dict]) -> list[str]:
             if block.get('type') not in ('tool_use', 'tool_result'):
                 continue
             tool_name = block.get('name', '')
+            inp_early = block.get('input') or {}
+            if tool_name in BASH_TOOL_NAMES and isinstance(inp_early, dict):
+                paths.extend(extract_paths_from_bash(inp_early.get('command', ''), PROJECT_ROOT))
+                continue
             if tool_name not in FILE_TOOL_NAMES:
                 continue
             # Extract file_path from input
@@ -181,14 +263,14 @@ def extract_user_phrases(text: str) -> list[str]:
 
     # "the X" / "the X page/screen/section/tab/view/panel/modal/form/button"
     for m in re.finditer(
-        r'\bthe\s+([\w\s-]{2,40?}?)\s*(?:page|screen|section|tab|view|panel|modal|form|button|component|widget|dashboard|list|table|chart|graph|map|sidebar|header|footer|nav|menu)\b',
+        r'\bthe\s+([\w\s-]{2,40}?)\s*(?:page|screen|section|tab|view|panel|modal|form|button|component|widget|dashboard|list|table|chart|graph|map|sidebar|header|footer|nav|menu)\b',
         text, re.IGNORECASE
     ):
         phrases.append(m.group(1).lower().strip())
 
     # "X feature" / "X functionality" / "X system" / "X module"
     for m in re.finditer(
-        r'\b([\w\s-]{2,30?}?)\s+(?:feature|functionality|system|module|service|flow|workflow|pipeline|process)\b',
+        r'\b([\w\s-]{2,30}?)\s+(?:feature|functionality|system|module|service|flow|workflow|pipeline|process)\b',
         text, re.IGNORECASE
     ):
         candidate = m.group(1).lower().strip()
@@ -199,7 +281,17 @@ def extract_user_phrases(text: str) -> list[str]:
     # Filter: remove stop-word-only phrases, too short/long
     result = []
     for phrase in phrases:
-        words = [w for w in phrase.split() if w not in STOP_WORDS and len(w) > 1]
+        # Sentence punctuation means this is a clause, not a name for something
+        # ("that, if not", "total documents:"). Aliases don't contain it.
+        if any(ch in phrase for ch in ',:;?!'):
+            continue
+        # Strip punctuation BEFORE the stop-word test — otherwise "that," fails
+        # to match the stop word "that" and survives as an alias.
+        words = [w.strip('.\'"`()[]{}<>*_-') for w in phrase.split()]
+        words = [w for w in words if w and w not in STOP_WORDS and len(w) > 1]
+        # At least one substantial word, so "up to" and "as is" don't qualify.
+        if not any(len(w) >= 3 for w in words):
+            continue
         if MIN_ALIAS_WORDS <= len(words) <= MAX_ALIAS_WORDS:
             clean = ' '.join(words)
             if clean and clean not in result:
@@ -241,12 +333,11 @@ class SessionMiner:
 
         # Walk messages in pairs: look for user message followed by tool calls
         for i, msg in enumerate(messages):
-            role = msg.get('role') or msg.get('type') or ''
-            if role not in ('user', 'human'):
+            if not is_user_turn(msg):
                 continue
 
             # Extract text from this user message
-            content = msg.get('content') or ''
+            content = msg_content(msg) or ''
             if isinstance(content, list):
                 text_parts = []
                 for block in content:
@@ -261,14 +352,13 @@ class SessionMiner:
             if len(text) < 5:
                 continue
 
-            # Find tool calls in subsequent assistant messages (within next 3 messages)
+            # Everything the assistant touched before the next real user turn.
+            # Bounded by MAX_LOOKAHEAD so one runaway turn can't scan the file.
             file_paths: list[str] = []
-            for j in range(i + 1, min(i + 4, len(messages))):
-                next_msg = messages[j]
-                next_role = next_msg.get('role') or next_msg.get('type') or ''
-                if next_role in ('user', 'human') and j > i + 1:
-                    break  # New user turn — stop looking
-                file_paths.extend(extract_file_paths_from_tool_calls([next_msg]))
+            for j in range(i + 1, min(i + 1 + MAX_LOOKAHEAD, len(messages))):
+                if is_user_turn(messages[j]):
+                    break
+                file_paths.extend(extract_file_paths_from_tool_calls([messages[j]]))
 
             if not file_paths:
                 continue
@@ -353,11 +443,27 @@ def decay_old_entries(vocab: dict) -> dict:
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
+def load_cursor() -> float:
+    try:
+        return float(json.loads(MINE_CURSOR.read_text()).get('last_mined_mtime', 0.0))
+    except Exception:
+        return 0.0
+
+
+def save_cursor(mtime: float) -> None:
+    try:
+        MINE_CURSOR.write_text(json.dumps({'last_mined_mtime': mtime}, indent=2))
+    except OSError:
+        pass
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description='Mine Claude Code sessions for vocabulary aliases')
     parser.add_argument('--project-root', type=Path, default=None)
     parser.add_argument('--dry-run', action='store_true', help='Print results without saving')
     parser.add_argument('--verbose', '-v', action='store_true', help='Show per-file details')
+    parser.add_argument('--all', action='store_true',
+                        help='Ignore the incremental cursor and re-mine every transcript')
     args = parser.parse_args()
 
     global PROJECT_ROOT
@@ -380,6 +486,17 @@ def main() -> None:
         sys.exit(0)
 
     print(f"[mine-sessions] Found {len(session_files)} session file(s)")
+
+    # Only transcripts touched since the last run. Without this, every session
+    # start re-reads the whole history AND re-adds its scores.
+    cursor = 0.0 if args.all else load_cursor()
+    newest = max((f.stat().st_mtime for f in session_files), default=0.0)
+    if cursor:
+        session_files = [f for f in session_files if f.stat().st_mtime > cursor]
+        if not session_files:
+            print("[mine-sessions] No transcripts changed since last run — nothing to do")
+            sys.exit(0)
+        print(f"[mine-sessions] {len(session_files)} changed since last run")
 
     # Mine
     miner = SessionMiner(PROJECT_ROOT, verbose=args.verbose)
@@ -411,6 +528,7 @@ def main() -> None:
     merged = decay_old_entries(merged)
 
     LEARNED_VOC.write_text(json.dumps(merged, indent=2, ensure_ascii=False), encoding='utf-8')
+    save_cursor(newest)
     print(f"[mine-sessions] ✓ Saved {len(merged)} total aliases to {LEARNED_VOC}")
     print(f"  (run 'python generate.py --force' to rebuild sections with updated vocabulary)")
 

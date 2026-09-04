@@ -16,23 +16,25 @@ purpose: Quick reference for architecture documentation
 
 | Metric | Value |
 |--------|-------|
-| Documents | 1 |
+| Documents | 2 |
 | Category | development |
 | Load Priority | 7/10 |
 
 ## Active Documents
 
 - [Project map watch set](project-map-watch-set.md)
+- [Session vocabulary mining](session-vocabulary-mining.md)
 
 ## Recently Updated
 
 - [Project map watch set](project-map-watch-set.md) - 2026-09-04
+- [Session vocabulary mining](session-vocabulary-mining.md) - 2026-09-04
 
 ## By Status
 
 | Status | Count |
 |--------|-------|
-| active | 1 |
+| active | 2 |
 | draft | 0 |
 | deprecated | 0 |
 | archived | 0 |

@@ -47,6 +47,24 @@ By design. Doc paths are hashed without mtime, so adding/renaming/deleting a doc
 refreshes section 19 while editing one does not churn the whole map. Section 19
 lists paths, never content.
 
+### Learned vocabulary mines nothing — often correct
+
+The miner learns feature nouns ("the deals page"). Sessions spent on tooling,
+refactoring or releases contain few and correctly yield zero. It also never
+raises: it exits 0 printing "Extracted 0 alias(es)" whether it worked or is
+broken, so silence is not evidence either way.
+
+Aliases land one session late — a transcript isn't written until its session
+ends, so SessionStart mines through the previous session.
+
+Full symptom table: [`.documentation/troubleshooting/learned-vocabulary-empty.md`](../../.documentation/troubleshooting/learned-vocabulary-empty.md)
+
+### Never delete .mine-cursor.json alone
+
+`merge_learned()` ADDS scores. The cursor is what stops an already-counted
+transcript being re-counted. Deleting it without also resetting
+`learned-vocabulary.json` double-counts every historical session.
+
 ### The curl installer aborts with CHECKSUM MISMATCH
 
 `checksums.json` holds the SHA256 of `.claude/install.sh` and is verified before
