@@ -26,7 +26,7 @@ purpose: Quick reference for quickstart documentation
 
 ## Recently Updated
 
-- [Integration with semantic-memory](integration-with-semantic-memory.md) - 2026-05-07
+- [Integration with semantic-memory](integration-with-semantic-memory.md) - 2026-09-04
 
 ## By Status
 

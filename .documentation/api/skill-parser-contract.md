@@ -84,33 +84,15 @@ existing `.claude/skills` walk so a skill present in both places is listed once.
 Deduplication is by file path, and the patterns are ordered so a root `skills/`
 manifest wins over the same skill installed under `.claude/skills/`.
 
-## Known discrepancy with the glossary contract
+## How entries reach a consumer
 
-[`glossary-contract.md`](./glossary-contract.md) specifies that section 01 is
-emitted as bullets:
+Vocabulary is emitted twice: as a markdown table in `01-vocabulary.md` for
+humans, and as structured records in
+[`glossary.json`](./glossary-contract.md) for machines. Skill and command
+entries appear in both, with `section` set to `skill` or `command`.
 
-```markdown
-- **deals page** → `features/deal-pipeline/DealPipeline.tsx` — description
-```
-
-`build_vocabulary_section()` in fact emits a **markdown table**:
-
-```markdown
-| Alias | Type | Location | Notes |
-|-------|------|----------|-------|
-| /status | command | commands/status.md | Show installed version… |
-```
-
-The documented extractor ignores "plain bullet entries without the
-bold-arrow-backtick pattern", and a table row is not that pattern, so a
-consumer implemented strictly to the contract would extract **zero** entries.
-
-This predates the skill parser and is not resolved here — changing the emitted
-format is a breaking change to a format a downstream consumer pins to, and
-which side should move has not been decided. Recorded so the next person does
-not assume the contract is describing observed behaviour. The same doc also
-refers to output at `.babel-fish/`, while the generator writes to
-`.claude/project-map/sections/`.
+Consumers read the JSON. The markdown is not a parsing target — see the contract
+for why.
 
 ## See also
 

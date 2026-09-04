@@ -14,7 +14,8 @@ if echo "$STAGED_FILES" | grep -qE "$EXTENSIONS_PATTERN" 2>/dev/null; then
             echo "[codebase-mapper] Regenerating project map..."
             if $PYTHON "$MAP_SCRIPT" 2>/dev/null; then
                 git add .claude/project-map/PROJECT_MAP.md .claude/project-map/checksums.json \
-                        .claude/project-map/sections/*.md .claude/project-map/learned-vocabulary.json 2>/dev/null || true
+                        .claude/project-map/sections/*.md .claude/project-map/learned-vocabulary.json \
+                        .claude/project-map/glossary.json 2>/dev/null || true
             fi
         fi
     fi

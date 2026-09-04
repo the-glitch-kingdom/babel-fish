@@ -25,8 +25,8 @@ purpose: Complete listing of api documentation
 
 | Document | Status | Updated | Words |
 |----------|--------|---------|-------|
-| [Babel-fish glossary contract](glossary-contract.md) | active | 2026-05-07 | 1,148 |
-| [Skill parser contract](skill-parser-contract.md) | active | 2026-09-04 | 566 |
+| [Babel-fish glossary contract](glossary-contract.md) | active | 2026-09-04 | 594 |
+| [Skill parser contract](skill-parser-contract.md) | active | 2026-09-04 | 472 |
 
 ## Keywords
 

@@ -17,7 +17,7 @@ from fnmatch import fnmatch
 import re
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +34,10 @@ MAP_DIR      = SCRIPT_DIR
 SECTIONS_DIR = MAP_DIR / "sections"
 CHECKSUMS    = MAP_DIR / "checksums.json"
 LEARNED_VOC  = MAP_DIR / "learned-vocabulary.json"
+GLOSSARY     = MAP_DIR / "glossary.json"
+# Bump when the glossary.json shape changes. Consumers should refuse a major
+# they do not recognise rather than guess.
+GLOSSARY_SCHEMA_VERSION = "1.0"
 
 # Resolve project root: two levels up from .claude/project-map/
 PROJECT_ROOT = MAP_DIR.parent.parent
@@ -1452,6 +1456,50 @@ def build_doc_pointers_section() -> str:
     return '\n'.join(lines) + '\n'
 
 
+# ── Glossary side-channel ─────────────────────────────────────────────────────
+
+def _relative_source() -> str:
+    vocab_md = SECTIONS_DIR / '01-vocabulary.md'
+    try:
+        return str(vocab_md.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(vocab_md)
+
+
+def write_glossary(vocab: list[dict], stack: dict) -> Path:
+    """Structured vocabulary for machine consumers.
+
+    01-vocabulary.md stays human-facing. Consumers read this instead of parsing
+    prose: the markdown is a rendered table whose Notes column mixes
+    descriptions with metadata and carries pipe-escaping (`a \\| b`), which is
+    fine to read and hostile to parse.
+    """
+    entries = [
+        {
+            'key': v.get('alias', ''),
+            'canonical_path': v.get('location', ''),
+            'section': v.get('type', ''),
+            'description': v.get('notes', '') or None,
+        }
+        for v in sorted(vocab, key=lambda x: x.get('alias', ''))
+        if v.get('alias')
+    ]
+    payload = {
+        'schema_version': GLOSSARY_SCHEMA_VERSION,
+        'generated_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+        # SECTIONS_DIR is bound to the script's location, which is not under
+        # PROJECT_ROOT when --project-root points elsewhere. Report a relative
+        # path when there is one, the absolute path otherwise.
+        'source': _relative_source(),
+        'project': stack.get('name', PROJECT_ROOT.name),
+        'entry_count': len(entries),
+        'entries': entries,
+    }
+    GLOSSARY.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + '\n',
+                        encoding='utf-8')
+    return GLOSSARY
+
+
 # ╔══════════════════════════════════════════════════════════════════════════╗
 # ║  PROJECT MAP TOC                                                         ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
@@ -1621,6 +1669,9 @@ def main() -> None:
 
     print("[generate] Building vocabulary...")
     vocab = VocabularyBuilder().build(routes, models, schemas, features, stack, skills)
+
+    glossary_path = write_glossary(vocab, stack)
+    print(f"[generate] Glossary → {glossary_path.name} ({len(vocab)} entries)")
 
     print("[generate] Tracing import chains...")
     chains = ImportChainTracer().trace(routes)

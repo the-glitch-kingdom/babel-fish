@@ -12,6 +12,7 @@ well-formedness; these measure usefulness.
 from __future__ import annotations
 
 import importlib.util
+import pathlib
 import shutil
 import sys
 import tempfile
@@ -171,6 +172,69 @@ def test_plugin_repo_map_is_not_empty(g):
 
     section = g.build_vocabulary_section(vocab)
     assert "no vocabulary generated yet" not in section, "section 01 still renders the stub"
+
+
+# ── Glossary side-channel (#10) ──────────────────────────────────────────────
+
+def test_glossary_json_written_and_shaped(g):
+    """Consumers read this instead of parsing the markdown table."""
+    import json
+    skills = g.SkillParser().parse()
+    vocab = g.VocabularyBuilder().build([], [], [], [], g.load_stack(), skills)
+    path = g.write_glossary(vocab, g.load_stack())
+    assert path.exists(), "glossary.json not written"
+    data = json.loads(path.read_text())
+
+    for field in ("schema_version", "generated_at", "source", "project",
+                  "entry_count", "entries"):
+        assert field in data, f"missing {field}: {sorted(data)}"
+    assert data["entry_count"] == len(data["entries"])
+    assert data["schema_version"].count(".") == 1, data["schema_version"]
+
+    for e in data["entries"]:
+        assert set(e) == {"key", "canonical_path", "section", "description"}, e
+        assert e["key"], e
+    keys = [e["key"] for e in data["entries"]]
+    assert keys == sorted(keys), "entries must be sorted by key"
+    assert len(keys) == len(set(keys)), "keys must be unique"
+
+
+def test_glossary_source_path_is_real(g):
+    """v1.0 of the contract named `.babel-fish/`, which was never written."""
+    import json
+    data = json.loads(g.write_glossary([], g.load_stack()).read_text())
+    assert ".babel-fish" not in data["source"], data["source"]
+    assert data["source"].endswith("01-vocabulary.md"), data["source"]
+    assert pathlib.PurePath(data["source"]).parent.name == "sections", data["source"]
+
+
+def test_glossary_values_are_unescaped(g):
+    """The markdown table escapes pipes into values (`auto \\| nudge`). JSON
+    must carry the real string — that escaping is the clearest reason not to
+    parse the rendered table."""
+    import json
+    vocab = [{"alias": "policy", "type": "command", "location": "commands/policy.md",
+              "notes": "Get or set the policy (auto | nudge | off)"}]
+    data = json.loads(g.write_glossary(vocab, g.load_stack()).read_text())
+    assert data["entries"][0]["description"] == "Get or set the policy (auto | nudge | off)"
+    assert "\\|" not in data["entries"][0]["description"]
+
+
+def test_empty_glossary_is_valid(g):
+    """An empty vocabulary is a valid glossary, not an error."""
+    import json
+    data = json.loads(g.write_glossary([], g.load_stack()).read_text())
+    assert data["entries"] == [] and data["entry_count"] == 0
+
+
+def test_glossary_survives_foreign_project_root(g):
+    """SECTIONS_DIR is bound to the script location, which is NOT under
+    PROJECT_ROOT when --project-root points elsewhere. That combination raised
+    ValueError from relative_to()."""
+    import json
+    g.write_glossary([], g.load_stack())  # PROJECT_ROOT is the temp fixture here
+    data = json.loads(g.GLOSSARY.read_text())
+    assert data["source"].endswith("01-vocabulary.md"), data["source"]
 
 
 def main() -> int:
