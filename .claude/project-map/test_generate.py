@@ -52,6 +52,10 @@ def make_plugin_repo(root: Path) -> None:
     (root / ".documentation/api").mkdir(parents=True)
     (root / ".documentation/api/contract.md").write_text("---\ntitle: Contract\n---\n\nprose\n")
     (root / ".documentation/api/INDEX.md").write_text("---\ntitle: Index\n---\n\nnav\n")
+    (root / ".documentation/reports").mkdir(parents=True)
+    (root / ".documentation/reports/maintenance-2026-09-04T18-32-22.md").write_text(
+        "---\ntitle: Maintenance Report\n---\n\ngenerated\n"
+    )
     (root / ".documentation/archive").mkdir(parents=True)
     (root / ".documentation/archive/old.md").write_text("---\ntitle: Old\n---\n\nretired\n")
     (root / "README.md").write_text("# demo\n")
@@ -113,6 +117,10 @@ def test_doc_pointers_exclude_nav_and_archive(g):
     assert "README.md" in docs, "section 19's root *.md glob must be covered"
     assert ".documentation/api/INDEX.md" not in docs, "hewtd nav crowds out real docs"
     assert ".documentation/archive/old.md" not in docs, "archived docs are not pointers"
+    assert not any("/reports/" in d for d in docs), (
+        "generated reports must not be listed: each run writes a new timestamped "
+        "filename, which would move the checksum and force a full regeneration"
+    )
 
 
 # ── SkillParser ──────────────────────────────────────────────────────────────
