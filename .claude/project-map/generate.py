@@ -13,6 +13,7 @@ import ast
 import argparse
 import hashlib
 import json
+from fnmatch import fnmatch
 import re
 import subprocess
 import sys
@@ -53,13 +54,38 @@ def redact_secrets(text: str) -> str:
 # ── Checksum logic ───────────────────────────────────────────────────────────
 WATCHED_EXTENSIONS = {
     '.py', '.ts', '.tsx', '.js', '.jsx', '.go', '.java', '.kt',
-    '.yaml', '.yml', '.toml', '.json', '.prisma', '.sql', '.env',
+    '.yaml', '.yml', '.toml', '.json', '.prisma', '.sql', '.env', '.sh',
 }
 WATCHED_NAMES = {
     'docker-compose.yml', 'docker-compose.yaml', 'docker-compose.dev.yml',
     'package.json', 'requirements.txt', 'pyproject.toml', 'go.mod',
     'Cargo.toml', 'pom.xml', 'Gemfile', 'Makefile',
 }
+# Skill/command manifests — matched by path shape, not by extension, so
+# documentation .md files stay out of the watch set. fnmatch runs against the
+# repo-relative posix path, which anchors the glob at the root:
+# ".documentation/reference/commands/cli.md" does not match "commands/*.md".
+WATCHED_GLOBS = (
+    'skills/*/SKILL.md',
+    'commands/*.md',
+    # Dead until '.claude' leaves IGNORE_DIRS; kept as the anchor for when it does.
+    '.claude/skills/*/SKILL.md',
+    '.claude/commands/*.md',
+)
+
+# Directories build_doc_pointers_section() walks. Watched by PATH ONLY (no
+# mtime) so adding or removing a doc refreshes section 19 while editing one
+# does not churn the whole map.
+DOC_DIRS = ['docs', 'doc', 'documentation', 'wiki', '.docs', '.documentation']
+DOC_EXTS = {'.md', '.rst', '.txt', '.adoc'}
+# Auto-generated navigation, not documentation. A hit-em-with-the-docs tree
+# carries one INDEX.md + REGISTRY.md per domain (32 files for 15 domains), which
+# would otherwise crowd every real doc out of section 19's 30-entry cap.
+DOC_SKIP_NAMES = {'INDEX.md', 'REGISTRY.md'}
+# hewtd excludes archive/ from all of its own scans; deprecated docs are not
+# pointers worth handing an agent.
+DOC_SKIP_DIRS = {'archive'}
+
 IGNORE_DIRS = {
     '.git', 'node_modules', '__pycache__', '.venv', 'venv', 'env',
     'dist', 'build', '.next', '.nuxt', 'target', 'vendor', '.cache',
@@ -71,11 +97,34 @@ def collect_watched_files() -> list[Path]:
     for path in sorted(PROJECT_ROOT.rglob('*')):
         if any(p in IGNORE_DIRS for p in path.parts):
             continue
-        if path.is_file() and (path.suffix in WATCHED_EXTENSIONS or path.name in WATCHED_NAMES):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(PROJECT_ROOT).as_posix()
+        if (path.suffix in WATCHED_EXTENSIONS
+                or path.name in WATCHED_NAMES
+                or any(fnmatch(rel, g) for g in WATCHED_GLOBS)):
             result.append(path)
     return result
 
-def compute_checksum(files: list[Path]) -> str:
+
+def collect_doc_files() -> list[Path]:
+    """Docs section 19 points at. Hashed by path only — see compute_checksum."""
+    docs = []
+    for doc_dir in DOC_DIRS:
+        d = PROJECT_ROOT / doc_dir
+        if d.is_dir():
+            docs.extend(
+                f for f in d.rglob('*')
+                if f.is_file()
+                and f.suffix in DOC_EXTS
+                and f.name not in DOC_SKIP_NAMES
+                and not (DOC_SKIP_DIRS & set(f.relative_to(PROJECT_ROOT).parts))
+            )
+    # Root-level docs, matching build_doc_pointers_section()'s own glob.
+    docs.extend(f for f in PROJECT_ROOT.glob('*.md') if f.is_file())
+    return sorted(set(docs))
+
+def compute_checksum(files: list[Path], doc_files: list[Path] | None = None) -> str:
     h = hashlib.sha256()
     for f in files:
         h.update(str(f).encode())
@@ -83,6 +132,11 @@ def compute_checksum(files: list[Path]) -> str:
             h.update(str(f.stat().st_mtime_ns).encode())
         except OSError:
             pass
+    # ponytail: path only, no mtime — a new/renamed/deleted doc regenerates the
+    # section 19 pointer list, an edited one doesn't. Hashing doc mtimes would
+    # force a full regeneration on every prose edit.
+    for f in doc_files or []:
+        h.update(str(f).encode())
     return h.hexdigest()
 
 def load_checksums() -> dict:
@@ -1260,20 +1314,9 @@ def build_dead_code_section(candidates: list[dict]) -> str:
 
 def build_doc_pointers_section() -> str:
     lines = ["# Section 19 — Documentation Pointers\n\n"]
-    docs = []
-    doc_dirs = ['docs', 'doc', 'documentation', 'wiki', '.docs']
-    doc_exts = {'.md', '.rst', '.txt', '.adoc'}
-
-    for doc_dir in doc_dirs:
-        d = PROJECT_ROOT / doc_dir
-        if d.is_dir():
-            for f in sorted(d.rglob('*')):
-                if f.is_file() and f.suffix in doc_exts:
-                    docs.append(str(f.relative_to(PROJECT_ROOT)))
-
-    # Root-level docs
-    for f in PROJECT_ROOT.glob('*.md'):
-        docs.append(str(f.relative_to(PROJECT_ROOT)))
+    # Same walk the checksum watches (DOC_DIRS/DOC_EXTS), so the pointer list and
+    # the watch set cannot drift apart.
+    docs = [str(f.relative_to(PROJECT_ROOT)) for f in collect_doc_files()]
 
     if not docs:
         lines.append("_No documentation files found._\n")
@@ -1392,7 +1435,7 @@ def main() -> None:
 
     # 1. Checksum check
     watched = collect_watched_files()
-    checksum = compute_checksum(watched)
+    checksum = compute_checksum(watched, collect_doc_files())
 
     if not args.force and is_unchanged(checksum):
         print("[generate] ✓ No changes detected — skipping regeneration (use --force to override)")
