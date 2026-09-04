@@ -83,8 +83,11 @@ DOC_EXTS = {'.md', '.rst', '.txt', '.adoc'}
 # would otherwise crowd every real doc out of section 19's 30-entry cap.
 DOC_SKIP_NAMES = {'INDEX.md', 'REGISTRY.md'}
 # hewtd excludes archive/ from all of its own scans; deprecated docs are not
-# pointers worth handing an agent.
-DOC_SKIP_DIRS = {'archive'}
+# pointers worth handing an agent. 'reports' holds generated, timestamped audit
+# output — listing it is noise, and because every run writes a NEW filename it
+# would change the doc path set and force a full regeneration each time, which
+# is the churn the path-only doc hash exists to prevent.
+DOC_SKIP_DIRS = {'archive', 'reports'}
 
 IGNORE_DIRS = {
     '.git', 'node_modules', '__pycache__', '.venv', 'venv', 'env',

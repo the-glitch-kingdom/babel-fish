@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.1] - 2026-09-04
+
+### Fixed
+
+- **Section 19 listed generated hit-em-with-the-docs reports.**
+  `.documentation/reports/` holds timestamped audit output, so every `hewtd
+  maintain` wrote a new filename, which changed the doc path set, moved the
+  checksum and forced a full map regeneration — the exact churn the path-only
+  doc hash exists to prevent, reintroduced through a directory that was
+  gitignored but never excluded from the doc walk. `reports` joins `archive` in
+  `DOC_SKIP_DIRS`. Regression test added; it fails without the fix.
+
 ## [2.1.0] - 2026-09-04
 
 ### Fixed
