@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.3] - 2026-09-05
+
+### Fixed
+
+- **`npm test` overwrote the map it was testing, and still reported every test
+  passing** ([#18](https://github.com/TheGlitchKing/babel-fish/issues/18)). A run
+  rewrote the working tree's `.claude/project-map/glossary.json` with fixture
+  data — 10 entries down to 1 — and printed a clean pass. Caught only by
+  diffing before a commit during the 2.4.2 release.
+
+  `generate.py` and `mine-sessions.py` bind `MAP_DIR`, `SECTIONS_DIR`,
+  `CHECKSUMS`, `LEARNED_VOC` and `GLOSSARY` at import time from `__file__`, and
+  rebind them only inside `configure_paths()`. Both test loaders assigned
+  `mod.PROJECT_ROOT` and stopped there, so every output path stayed aimed at the
+  real repo while the tests believed they were in a temp fixture; whichever test
+  called `write_glossary()` last won. This is the [#15](https://github.com/TheGlitchKing/babel-fish/issues/15)
+  defect class — writes escaping to the script's own directory — surviving in
+  the harness after being fixed in the scripts themselves.
+
+  Both loaders now call `configure_paths(fixture_root)`.
+  `test_glossary_survives_foreign_project_root` depended on the leak (it needs
+  `SECTIONS_DIR` outside `PROJECT_ROOT`, which used to arrive for free) and now
+  recreates that mismatch explicitly, so it still covers the `ValueError` from
+  `relative_to()` without writing outside its fixture — verified by mutation:
+  deleting the `try`/`except` in `_relative_source()` fails that test and only
+  that one. `test_grader.py` is deliberately untouched; its loader assigns a map
+  dir rather than a project root.
+
+  38 tests pass across the three suites, and a full run now leaves the tree
+  clean.
+
 ## [2.4.2] - 2026-09-05
 
 ### Fixed
