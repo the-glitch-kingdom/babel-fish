@@ -30,7 +30,12 @@ def load_generate(project_root: Path):
         spec.loader.exec_module(mod)
     finally:
         sys.argv = argv
-    mod.PROJECT_ROOT = project_root
+    # configure_paths(), not `mod.PROJECT_ROOT = ...`: generate.py binds MAP_DIR,
+    # SECTIONS_DIR, CHECKSUMS, LEARNED_VOC and GLOSSARY at import time from
+    # __file__, and rebinds them only here. Setting PROJECT_ROOT alone left every
+    # output path aimed at the real repo, so the suite overwrote its own
+    # glossary.json with fixture data and still passed (#18).
+    mod.configure_paths(project_root)
     return mod
 
 
@@ -232,7 +237,11 @@ def test_glossary_survives_foreign_project_root(g):
     PROJECT_ROOT when --project-root points elsewhere. That combination raised
     ValueError from relative_to()."""
     import json
-    g.write_glossary([], g.load_stack())  # PROJECT_ROOT is the temp fixture here
+    # Recreate the mismatch explicitly. It used to arrive for free because the
+    # loader left SECTIONS_DIR pointing at the script dir — the same leak that
+    # let this test write into the real repo (#18).
+    g.SECTIONS_DIR = HERE / "sections"
+    g.write_glossary([], g.load_stack())
     data = json.loads(g.GLOSSARY.read_text())
     assert data["source"].endswith("01-vocabulary.md"), data["source"]
 

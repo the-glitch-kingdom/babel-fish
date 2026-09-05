@@ -28,7 +28,10 @@ def load_miner(project_root: Path, cursor_dir: Path):
         spec.loader.exec_module(mod)
     finally:
         sys.argv = argv
-    mod.PROJECT_ROOT = project_root
+    # configure_paths(), not `mod.PROJECT_ROOT = ...` — see the same note in
+    # test_generate.py (#18). LEARNED_VOC is bound at import time from __file__,
+    # so assigning PROJECT_ROOT alone leaves it aimed at the real repo.
+    mod.configure_paths(project_root)
     mod.MINE_CURSOR = cursor_dir / ".mine-cursor.json"
     return mod
 
