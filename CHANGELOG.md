@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.2] - 2026-09-05
+
+### Fixed
+
+- **`update` exited 0 without updating anything**
+  ([#17](https://github.com/TheGlitchKing/babel-fish/issues/17)). The defect was
+  in `@theglitchking/claude-plugin-runtime`, which resolved installation state
+  only from `<cwd>/node_modules` and `CLAUDE_PLUGIN_ROOT`. A marketplace-plugin
+  install — the documented, supported way to install babel-fish — matched
+  neither, so `babel-fish update` printed `Current: (not installed)` and
+  `Now: (not installed)`, ran an `npm update` that touched nothing, and reported
+  success. A stale plugin stayed stale and nobody found out.
+
+  `status` shared the blind spot, and contradicted itself in the process:
+  `installed: (not installed)` against a CLI whose `--version` printed 2.4.1,
+  and `hook: not in .claude/settings.json` while the SessionStart hook was
+  demonstrably firing — a marketplace plugin registers its hook through its own
+  `hooks/hooks.json` and needs nothing in project settings.
+
+  Fixed upstream in runtime 0.1.1, which this release requires (`^0.1.1`, raised
+  from `^0.1.0` so the range itself forces re-resolution past a lock pinned to
+  0.1.0). `update` now exits non-zero and names every path it checked; when the
+  copy is plugin-installed it says npm cannot update that and points at
+  `/plugin`. Nothing in babel-fish's own source changed.
+
 ## [2.4.1] - 2026-09-04
 
 ### Fixed
