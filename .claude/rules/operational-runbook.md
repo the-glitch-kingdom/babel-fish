@@ -81,6 +81,58 @@ sha256sum .claude/install.sh    # write the result into checksums.json
 This has gone stale more than once (commit `a2dad3f` was a prior fix for the
 same thing). If the documented curl one-liner aborts, check this first.
 
+### A green suite is not proof the tree is clean
+
+Until #18, `npm test` rewrote `.claude/project-map/glossary.json` with fixture
+data and still reported every test passing — the glossary silently dropped from
+10 entries to 1 mid-release.
+
+`generate.py` and `mine-sessions.py` bind their output paths (`MAP_DIR`,
+`SECTIONS_DIR`, `CHECKSUMS`, `LEARNED_VOC`, `GLOSSARY`) at **import time** from
+`__file__`, and rebind them only inside `configure_paths()`. Setting
+`PROJECT_ROOT` alone — in a test loader or anywhere else — leaves every write
+aimed at the real repo while the caller believes it is in a temp fixture.
+
+When adding a test that calls a writer, load the module with
+`configure_paths(fixture_root)`, never `mod.PROJECT_ROOT = fixture_root`, and
+run `git status` after the suite. `test_grader.py` is the exception: its loader
+assigns a *map dir*, not a project root.
+
+### `update` and `status` behave differently per install kind
+
+babel-fish installs two ways, and they are not interchangeable:
+
+- **npm project dep** (`node_modules/`) — `update` can actually update it.
+- **Claude Code plugin** (`~/.claude/plugins/cache/`) — only `/plugin` can.
+  npm cannot touch that copy; `update` says so and exits 1.
+
+Both are resolved by `resolveInstall()` in `@theglitchking/claude-plugin-runtime`
+(≥0.1.1), which also reads `~/.claude/plugins/installed_plugins.json`. Before
+0.1.1 it looked only at `node_modules` and `CLAUDE_PLUGIN_ROOT`, so a plugin
+install reported `(not installed)`, ran a no-op `npm update`, and **exited 0**
+(#17). If `update` or `status` ever reports `(not installed)` against a working
+CLI, check the runtime version first.
+
+Two consequences for tests and scripts: anything that shells out to `update` or
+`status` must override `$HOME`, or its result depends on which plugins the
+person running it happens to have installed. And a marketplace plugin registers
+its SessionStart hook through its own `hooks/hooks.json` — an empty
+`.claude/settings.json` is not evidence the hook is missing.
+
+### Raising a shared dep needs a floor bump, not just a caret
+
+All the sibling plugins resolve `@theglitchking/claude-plugin-runtime` from one
+shared tree at `~/.claude/plugins/npm-cache/`, whose lockfile pins a single
+version for every plugin at once. Publishing 0.1.1 does not reach them: 0.1.0
+still satisfies `^0.1.0`, so the locked copy survives.
+
+Raise the floor (`^0.1.1`) in the plugin's own `package.json` and republish the
+plugin. That invalidates the lock entry and forces re-resolution. 2.4.2 and
+persistent-planning 3.4.2 both exist for this reason alone.
+
+Note this repo gitignores `package-lock.json` (`.gitignore:4`), so there is no
+lock here to pin anything — the range in `package.json` is the only control.
+
 ### Releases must bump three manifests together
 
 `package.json`, `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`
@@ -96,7 +148,7 @@ with `plugin.json` still at 2.0.0, so Claude Code read the installed plugin as
 
 | Command | What It Does |
 |---------|-------------|
-| `npm test` | Run the project-map regression suite (8 tests) |
+| `npm test` | Run all three project-map suites — generate (15), mine-sessions (13), grader (10). Stops at the first suite that fails, so a low count means an early exit, not a small suite |
 | `python .claude/project-map/generate.py --force` | Force-regenerate project map |
 | `python .claude/project-map/grader.py` | Grade map quality (0-100%) |
 | `bash .githooks/install.sh` | (Re)install git hooks |
