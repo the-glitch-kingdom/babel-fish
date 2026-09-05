@@ -1,6 +1,6 @@
 {
   "name": "@theglitchking/babel-fish",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Gives your AI coding assistant instant, accurate knowledge of every route, model, service, feature, and infrastructure element in your codebase.",
   "type": "module",
   "bin": {
@@ -59,7 +59,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@theglitchking/claude-plugin-runtime": "^0.1.0",
+    "@theglitchking/claude-plugin-runtime": "^0.1.1",
     "commander": "^14.0.0"
   }
 }
