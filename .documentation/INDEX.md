@@ -3,7 +3,7 @@ title: Documentation Index
 tier: reference
 domains: [root]
 status: active
-last_updated: '2026-09-04'
+last_updated: '2026-09-25'
 version: '1.0.0'
 purpose: Navigation hub for all documentation
 ---
@@ -27,7 +27,7 @@ purpose: Navigation hub for all documentation
 | [Procedures](#procedures) | 0 | Step-by-step operational procedures (SOP) |
 | [Quickstart](#quickstart) | 1 | Setup guides, dev workflow, onboarding |
 | [Security](#security) | 0 | Security, auth, Vault, Keycloak, RLS |
-| [Standards](#standards) | 0 | Coding standards (backend, frontend, database, devops, security) |
+| [Standards](#standards) | 1 | Coding standards (backend, frontend, database, devops, security) |
 | [Testing](#testing) | 0 | Test strategies, fixtures, patterns, integration/e2e |
 | [Troubleshooting](#troubleshooting) | 2 | Debug guides, common issues, solutions |
 | [Workflows](#workflows) | 0 | Process documentation, multi-step operations |
@@ -159,7 +159,9 @@ purpose: Navigation hub for all documentation
 
 **Path:** `standards/`
 
-*No documents yet.*
+| Document | Tier | Status | Updated |
+|----------|------|--------|----------|
+| [Auto-loaded context check](standards/auto-loaded-context-check.md) | standard | active | 2026-09-25 |
 
 ---
 
@@ -198,6 +200,6 @@ purpose: Navigation hub for all documentation
 
 ## Maintenance
 
-- **Last generated:** 2026-09-04
+- **Last generated:** 2026-09-25
 - **Run maintenance:** `npx hit-em-with-the-docs maintain`
 - **Regenerate index:** `npx hit-em-with-the-docs index`

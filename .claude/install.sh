@@ -98,6 +98,10 @@ POST-INSTALL COMMANDS
     python .claude/project-map/mine-sessions.py --verbose
     python .claude/project-map/mine-sessions.py --dry-run
 
+  Check auto-loaded context (CLAUDE.md + .claude/rules/) — budget, pointers:
+    python .claude/project-map/context-check.py
+    python .claude/project-map/context-check.py --budget 80000 --map-style
+
   Re-install git hooks (if you cloned a fresh copy):
     bash .githooks/install.sh
 
@@ -121,7 +125,7 @@ KEY FILES AFTER INSTALL
   .claude/rules/project-vocabulary.md       — Auto-loaded every session
   .claude/rules/operational-runbook.md      — Edit manually to grow over time
   .claude/skills/<slug>-developer-skill/    — Your developer skill
-  .githooks/pre-commit                      — Auto-regenerates map on commit
+  .githooks/pre-commit                      — Regenerates map; checks auto-loaded context
 
 GRADING CATEGORIES (90% to pass)
   Section completeness  25%  — All 19 sections generated
@@ -378,16 +382,44 @@ if echo "$STAGED_FILES" | grep -qE "$EXTENSIONS_PATTERN" 2>/dev/null; then
 fi
 # ── End Codebase Mapper ──────────────────────────────────────────────────────'
 
-    if [ -f "$pre_commit" ]; then
-        if ! grep -q 'Codebase Mapper' "$pre_commit" 2>/dev/null; then
-            { echo ""; echo "$hook_snippet"; } >> "$pre_commit"
-            ok "Appended to existing pre-commit hook"
-        else
-            ok "pre-commit hook already contains Codebase Mapper snippet"
+    # Own marker, checked separately: hooks installed before #20 already carry
+    # the Codebase Mapper block, and re-running the installer must still add this.
+    local check_snippet
+    check_snippet=$(cat <<'SNIPPET'
+# ── Context Check: auto-loaded instructions stay in budget, pointers resolve ──
+if git diff --cached --name-only 2>/dev/null | grep -qE '^(\.claude/)?CLAUDE(\.local)?\.md$|^\.claude/rules/.*\.md$'; then
+    CHECK_SCRIPT=".claude/project-map/context-check.py"
+    if [ -f "$CHECK_SCRIPT" ]; then
+        PYTHON=""
+        if [ -f ".venv/bin/python3" ]; then PYTHON=".venv/bin/python3"
+        elif command -v python3 &>/dev/null; then PYTHON="python3"
+        elif command -v python &>/dev/null; then PYTHON="python"
         fi
-    else
-        printf '#!/bin/bash\n%s\n' "$hook_snippet" > "$pre_commit"
+        if [ -n "$PYTHON" ] && ! $PYTHON "$CHECK_SCRIPT"; then
+            echo "[context-check] Commit blocked. Fix the FAIL lines above, or add flags (--budget N, --map-style) to this call in .githooks/pre-commit." >&2
+            exit 1
+        fi
+    fi
+fi
+# ── End Context Check ────────────────────────────────────────────────────────
+SNIPPET
+)
+
+    if [ ! -f "$pre_commit" ]; then
+        printf '#!/bin/bash\n' > "$pre_commit"
         ok "Created pre-commit hook"
+    fi
+    if ! grep -q 'Codebase Mapper' "$pre_commit" 2>/dev/null; then
+        { echo ""; echo "$hook_snippet"; } >> "$pre_commit"
+        ok "Added Codebase Mapper to pre-commit hook"
+    else
+        ok "pre-commit hook already contains Codebase Mapper snippet"
+    fi
+    if ! grep -q 'Context Check' "$pre_commit" 2>/dev/null; then
+        { echo ""; echo "$check_snippet"; } >> "$pre_commit"
+        ok "Added Context Check to pre-commit hook"
+    else
+        ok "pre-commit hook already contains Context Check snippet"
     fi
 
     chmod +x "$pre_commit"
@@ -512,6 +544,7 @@ if [ "$PLUGIN_SOURCE_DIR" != "$CLAUDE_DIR" ]; then
     cp -r "$PLUGIN_SOURCE_DIR/project-map/generate.py" "$CLAUDE_DIR/project-map/" 2>/dev/null || true
     cp -r "$PLUGIN_SOURCE_DIR/project-map/grader.py" "$CLAUDE_DIR/project-map/" 2>/dev/null || true
     cp -r "$PLUGIN_SOURCE_DIR/project-map/mine-sessions.py" "$CLAUDE_DIR/project-map/" 2>/dev/null || true
+    cp -r "$PLUGIN_SOURCE_DIR/project-map/context-check.py" "$CLAUDE_DIR/project-map/" 2>/dev/null || true
 fi
 
 # ── Step 1: Ensure Python ─────────────────────────────────────────────────────

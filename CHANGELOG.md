@@ -2,6 +2,45 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.0] - 2026-09-25
+
+### Added
+
+- **`context-check.py` — keeps auto-loaded context small and its pointers live**
+  ([#20](https://github.com/TheGlitchKing/babel-fish/issues/20)). `CLAUDE.md` and
+  every `.claude/rules/*.md` load into every session; past Claude Code's 150k-char
+  limit rules stop binding, and nothing reports it. glitch-stock-trading-rig had
+  reached 225.6k before forking `generate.py` to enforce a budget.
+
+  The new script checks three things. **Budget:** total chars under `--budget`
+  (default 60,000). **Pointers:** every `` → `path` ``, backticked `.documentation/`
+  path and relative markdown link resolves. hewtd link-checks only inside
+  `.documentation/`, so a renamed doc used to break a rule's pointer silently.
+  **Rule lines** (opt-in, `--map-style`): each rule bullet reads
+  `` - ALWAYS|NEVER <rule> — <why> → `doc` ``. That form is one repo's convention,
+  and the hook ships to every install, so it is off by default.
+
+  The pre-commit hook runs it when `CLAUDE.md` or `.claude/rules/` is staged, and a
+  failure blocks the commit. It is a separate script rather than part of
+  `generate.py`: the hook runs `generate.py` only for code changes, `.claude/` is
+  outside the watch set, and the hook discards `generate.py`'s errors. The block
+  has its own marker, so re-running `bash .claude/install.sh` adds it to hooks
+  installed by older versions.
+
+  Registry drift (item 4 of #20) stays in the downstream fork; babel-fish has no
+  tool registry.
+
+### Fixed
+
+- **This repo's pre-commit hook never ran.** Both `.githooks/` files were
+  committed `100644`, and git skips a non-executable hook without a word, so no
+  clone ever regenerated its map on commit. Both are `100755` now, and
+  `test_hooks_are_committed_executable` holds them there.
+
+  57 tests pass across four suites. Each context check was mutation-tested: breaking
+  it fails at least one test. A fresh install and an upgrade over a pre-2.5.0 hook
+  were both run end to end.
+
 ## [2.4.3] - 2026-09-05
 
 ### Fixed
