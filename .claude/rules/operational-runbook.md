@@ -140,6 +140,23 @@ all carry the version. 2.0.3 exists solely because the 2.0.2 npm payload shipped
 with `plugin.json` still at 2.0.0, so Claude Code read the installed plugin as
 2.0.0 and `claude plugin update` never advanced.
 
+### The pre-commit hook may not be running at all
+
+Git skips a non-executable hook without a word, and never sets `core.hooksPath`
+on clone. Until 2.5.0 both `.githooks/` files were committed `100644`, so no
+clone of this repo ran its hook — the map "regenerated on commit" never did.
+Check `git config core.hooksPath` prints `.githooks`; if not, run
+`bash .githooks/install.sh`. `test_hooks_are_committed_executable` guards the mode.
+
+### "[context-check] Commit blocked" after editing CLAUDE.md or a rule
+
+The auto-loaded files went over budget (60k) or a pointer names a missing file —
+the FAIL lines say which. It is a separate script, not part of `generate.py`,
+because the hook runs `generate.py` only for code changes and hides its errors.
+To change what it enforces, add flags to its call in `.githooks/pre-commit`.
+
+Full reference: [`.documentation/standards/auto-loaded-context-check.md`](../../.documentation/standards/auto-loaded-context-check.md)
+
 ## Deploy Procedures
 
 <!-- TODO: Document how to deploy to each environment -->
@@ -148,9 +165,10 @@ with `plugin.json` still at 2.0.0, so Claude Code read the installed plugin as
 
 | Command | What It Does |
 |---------|-------------|
-| `npm test` | Run all three project-map suites — generate (15), mine-sessions (13), grader (10). Stops at the first suite that fails, so a low count means an early exit, not a small suite |
+| `npm test` | Run all four project-map suites — generate (15), mine-sessions (13), grader (10), context-check (19). Stops at the first suite that fails, so a low count means an early exit, not a small suite |
 | `python .claude/project-map/generate.py --force` | Force-regenerate project map |
 | `python .claude/project-map/grader.py` | Grade map quality (0-100%) |
+| `python .claude/project-map/context-check.py` | Budget + pointer check on CLAUDE.md and `.claude/rules/` (what the hook runs) |
 | `bash .githooks/install.sh` | (Re)install git hooks |
 | `bash .claude/install.sh` | Re-run full plugin installer |
 

@@ -3,7 +3,7 @@ title: Standards Registry
 tier: reference
 domains: [standards]
 status: active
-last_updated: '2026-09-04'
+last_updated: '2026-09-25'
 version: '1.0.0'
 purpose: Quick reference for standards documentation
 ---
@@ -16,13 +16,26 @@ purpose: Quick reference for standards documentation
 
 | Metric | Value |
 |--------|-------|
-| Documents | 0 |
+| Documents | 1 |
 | Category | development |
 | Load Priority | 10/10 |
 
-## Documents
+## Active Documents
 
-*No documents in this domain yet.*
+- [Auto-loaded context check](auto-loaded-context-check.md)
+
+## Recently Updated
+
+- [Auto-loaded context check](auto-loaded-context-check.md) - 2026-09-25
+
+## By Status
+
+| Status | Count |
+|--------|-------|
+| active | 1 |
+| draft | 0 |
+| deprecated | 0 |
+| archived | 0 |
 
 ## Keywords
 
@@ -35,4 +48,4 @@ purpose: Quick reference for standards documentation
 
 ---
 
-*Last updated: 2026-09-04*
+*Last updated: 2026-09-25*

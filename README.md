@@ -146,7 +146,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for the full 2.0.0 release notes, breaking-ch
 2. Detects your stack (language, framework, database, ORM, auth, infra)
 3. Runs `generate.py` → grades with `grader.py` (iterates up to 3× until 90%+ quality)
 4. Renders your developer skill and rules files
-5. Installs the pre-commit hook (auto-regenerates map on source file changes)
+5. Installs the pre-commit hook (auto-regenerates map on source file changes; checks auto-loaded context when `CLAUDE.md` or `.claude/rules/` changes)
 6. Updates `CLAUDE.md` with a project map pointer
 7. Prints a full quality report
 
@@ -227,6 +227,21 @@ Entries follow a simple format: symptom → cause → fix. This is the anti-drif
 
 ---
 
+## Auto-loaded Context Check *(2.5.0+)*
+
+Everything in `CLAUDE.md` and `.claude/rules/` loads into every session, and past Claude Code's 150k-char limit rules stop binding silently. When those files are staged, the pre-commit hook runs `context-check.py` and blocks the commit if:
+
+- the total exceeds the budget (default 60,000 chars), or
+- a pointer names a file that doesn't exist. hewtd only link-checks inside `.documentation/`, so a renamed doc breaks a rule's pointer unnoticed.
+
+Opt in to `--map-style` to also require every rule bullet to read `` - ALWAYS|NEVER <rule> — <why> → `doc` ``. See [auto-loaded context check](./.documentation/standards/auto-loaded-context-check.md).
+
+```bash
+python .claude/project-map/context-check.py --budget 80000 --map-style
+```
+
+---
+
 ## File Structure
 
 ```
@@ -235,6 +250,7 @@ Entries follow a simple format: symptom → cause → fix. This is the anti-drif
 │   ├── generate.py              # Introspection script
 │   ├── grader.py                # Quality grader
 │   ├── mine-sessions.py         # Session vocabulary miner
+│   ├── context-check.py         # Budget + pointer check for auto-loaded files
 │   ├── PROJECT_MAP.md           # TOC + quick routing guide
 │   ├── sections/                # 19 focused section files
 │   ├── reports/                 # Install and iteration reports
@@ -247,7 +263,7 @@ Entries follow a simple format: symptom → cause → fix. This is the anti-drif
     └── <project>-developer-skill/
         └── SKILL.md
 .githooks/
-├── pre-commit                   # Auto-regenerates map on commit
+├── pre-commit                   # Regenerates map; runs the context check
 └── install.sh                   # Register hooks: bash .githooks/install.sh
 ```
 
@@ -281,6 +297,7 @@ Entries follow a simple format: symptom → cause → fix. This is the anti-drif
 | `python .claude/project-map/generate.py --force` | Force-regenerate project map |
 | `python .claude/project-map/grader.py` | Grade map quality (0–100%) |
 | `python .claude/project-map/mine-sessions.py` | Mine session vocabulary |
+| `python .claude/project-map/context-check.py` | Check auto-loaded context: budget, pointers |
 | `bash .githooks/install.sh` | (Re)install git hooks |
 | `bash .claude/install.sh` | Re-run full plugin installer |
 

@@ -3,7 +3,7 @@ title: Standards Documentation Index
 tier: reference
 domains: [standards]
 status: active
-last_updated: '2026-09-04'
+last_updated: '2026-09-25'
 version: '1.0.0'
 purpose: Complete listing of standards documentation
 ---
@@ -14,20 +14,19 @@ purpose: Complete listing of standards documentation
 
 ## Overview
 
-- **Total Documents:** 0
+- **Total Documents:** 1
 - **Domain:** `standards/`
 - **Category:** development
 - **Load Priority:** 10/10
 
 ## Documents
 
-*No documents in this domain yet.*
+### Standards
 
-To add a document:
+| Document | Status | Updated | Words |
+|----------|--------|---------|-------|
+| [Auto-loaded context check](auto-loaded-context-check.md) | active | 2026-09-25 | 162 |
 
-1. Create a markdown file in this directory
-2. Add YAML frontmatter with required metadata
-3. Run `npx hit-em-with-the-docs integrate <file>`
 ## Keywords
 
 This domain covers: standard, standards, convention, conventions, pattern, patterns, best-practice, best-practices, guideline, guidelines
@@ -39,4 +38,4 @@ This domain covers: standard, standards, convention, conventions, pattern, patte
 
 ---
 
-*Last updated: 2026-09-04*
+*Last updated: 2026-09-25*

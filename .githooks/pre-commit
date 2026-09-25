@@ -21,3 +21,20 @@ if echo "$STAGED_FILES" | grep -qE "$EXTENSIONS_PATTERN" 2>/dev/null; then
     fi
 fi
 # ── End Codebase Mapper ──────────────────────────────────────────────────────
+
+# ── Context Check: auto-loaded instructions stay in budget, pointers resolve ──
+if git diff --cached --name-only 2>/dev/null | grep -qE '^(\.claude/)?CLAUDE(\.local)?\.md$|^\.claude/rules/.*\.md$'; then
+    CHECK_SCRIPT=".claude/project-map/context-check.py"
+    if [ -f "$CHECK_SCRIPT" ]; then
+        PYTHON=""
+        if [ -f ".venv/bin/python3" ]; then PYTHON=".venv/bin/python3"
+        elif command -v python3 &>/dev/null; then PYTHON="python3"
+        elif command -v python &>/dev/null; then PYTHON="python"
+        fi
+        if [ -n "$PYTHON" ] && ! $PYTHON "$CHECK_SCRIPT"; then
+            echo "[context-check] Commit blocked. Fix the FAIL lines above, or add flags (--budget N, --map-style) to this call in .githooks/pre-commit." >&2
+            exit 1
+        fi
+    fi
+fi
+# ── End Context Check ────────────────────────────────────────────────────────
