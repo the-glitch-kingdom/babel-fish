@@ -470,6 +470,51 @@ def test_bootstrap_unknown_layout_exits_2(tmp):
     assert r.returncode == 2 and "no layout 'nope'" in r.stdout, r.stdout
 
 
+# ── layouts ──────────────────────────────────────────────────────────────────
+
+LAYOUTS = REPO / ".claude/templates/structure"
+
+
+def test_every_shipped_layout_is_a_valid_manifest(tmp):
+    names = sorted(p.stem for p in LAYOUTS.glob("*.toml"))
+    assert names == ["monorepo", "multi-repo", "single"], names
+    for name in names:
+        root = make_repo(tmp / name, {"README.md": "x"}, manifest=(LAYOUTS / f"{name}.toml").read_text())
+        r = check(root)
+        assert r.returncode in (0, 1), f"{name}: {r.stdout}"  # 2 would mean an invalid manifest
+        assert f'mode: {name}' in r.stdout, r.stdout
+
+
+def test_bootstrap_from_layout_adopts_an_existing_repo(tmp):
+    tree = {"README.md": "x", "src/a.py": "x", "infra/env/dev/.env.example": "a",
+            "legacy/old.py": "x", "notes.txt": "x"}
+    root = make_repo(tmp / "r", tree, manifest=None)
+    r = check(root, "--bootstrap", "--layout", "single")
+    assert r.returncode == 0 and "layout: single" in r.stdout, r.stdout
+    text = (root / ".claude/structure.toml").read_text()
+    # folders that exist are active, the rest planned
+    assert 'path = "src"\npurpose = "Application source"\nstatus = "active"' in text, text
+    assert 'path = "migrations"' in text and 'status = "planned"' in text, text
+    # what differs from the layout becomes the baseline, not a block
+    assert '"legacy/**"' in text and '"notes.txt"' in text, text
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    r = check(root)
+    assert r.returncode == 0 and "allowed by exceptions" in r.stdout, r.stdout
+    # ...and a NEW violation still blocks
+    (root / "stray.txt").write_text("x")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    r = check(root, "--staged")
+    assert r.returncode == 1 and "stray.txt" in r.stdout, r.stdout
+
+
+def test_bootstrap_from_layout_on_a_new_repo_plans_everything(tmp):
+    root = make_repo(tmp / "r", {"README.md": "x"}, manifest=None)
+    assert check(root, "--bootstrap", "--layout", "monorepo").returncode == 0
+    text = (root / ".claude/structure.toml").read_text()
+    assert 'status = "active"' not in text and "exceptions" not in text, text
+    assert 'name = "stg"' in text and 'mirrors = "prod"' in text, text
+
+
 def test_old_python_warns_and_skips(tmp):
     """Python < 3.11 has no tomllib: a readable WARN, exit 0, never a block."""
     make_repo(tmp, {"README.md": "x"})
