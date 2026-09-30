@@ -16,15 +16,19 @@ is staged and discards its errors — a failure there could never block a commit
 
 Usage:
     python structure-check.py [--staged | --since REF] [--warn-only] [--project-root PATH]
+    python structure-check.py --detect [--json]
+    python structure-check.py --bootstrap [--layout NAME] [--mode MODE]
 
 Exit: 0 clean (or no manifest), 1 violations, 2 unusable manifest or not a git repo.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
+from datetime import date
 from functools import lru_cache
 from pathlib import Path
 
@@ -35,6 +39,8 @@ except ImportError:  # ponytail: only this script needs 3.11; the rest of babel-
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 MANIFEST = PROJECT_ROOT / ".claude" / "structure.toml"
+# Layout templates ship with the scripts (install.sh copies .claude/templates/).
+LAYOUTS_DIR = Path(__file__).parent.parent / "templates" / "structure"
 
 MODES = ("monorepo", "single", "multi-repo")
 STATUSES = ("planned", "active", "deprecated")
@@ -384,6 +390,235 @@ def run(m: dict, staged: bool, since: str | None) -> int:
     return len(fails)
 
 
+# ── detect + bootstrap ───────────────────────────────────────────────────────
+# Facts only. Judgment (what a folder is FOR, which layout fits) is the
+# structure-bootstrap skill's job; this never guesses a purpose.
+
+WORKSPACE_FILES = ["pnpm-workspace.yaml", "turbo.json", "nx.json", "lerna.json", "go.work", "rush.json"]
+PACKAGE_MANIFESTS = {"package.json", "pyproject.toml", "go.mod", "Cargo.toml"}
+PACKAGE_PARENTS = {"apps", "packages", "services", "libs"}
+KNOWN_ENVS = ["local", "dev", "development", "test", "qa", "uat", "stg", "stage", "staging",
+              "preprod", "prod", "production"]
+WORKFLOW_ENV_RE = re.compile(r"^\s*environment:\s*(?:\n\s*name:\s*)?['\"]?([A-Za-z][\w-]*)", re.M)
+
+
+def all_files() -> list[str]:
+    """Tracked + untracked-but-not-ignored: a brand-new repo may have nothing staged yet."""
+    out = git("ls-files", "--cached", "--others", "--exclude-standard", "-z")
+    return sorted({p for p in out.split("\0") if p})
+
+
+def read(rel: str) -> str:
+    try:
+        return (PROJECT_ROOT / rel).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def sibling_repos() -> list[str]:
+    try:
+        return sorted(c.name for c in PROJECT_ROOT.parent.iterdir()
+                      if c != PROJECT_ROOT and c.is_dir() and (c / ".git").exists())
+    except OSError:
+        return []
+
+
+def detect_envs(files: list[str]) -> dict[str, list[str]]:
+    """-> {env name: [evidence paths]} from .env.<x>, compose.<x>.yml, <env dir>/<x>/, workflow environments."""
+    found: dict[str, set[str]] = {}
+    for p in files:
+        parts = p.split("/")
+        name = parts[-1]
+        hits = []
+        m = re.match(r"\.env\.([a-z]+)", name) or re.match(r"(?:docker-)?compose[.-]([a-z]+)\.ya?ml$", name)
+        if m:
+            hits.append(m.group(1))
+        if len(parts) > 1 and "compose" in parts[-2] and name.rsplit(".", 1)[0] in KNOWN_ENVS:
+            hits.append(name.rsplit(".", 1)[0])  # infra/compose/dev.yml
+        for i in range(1, len(parts) - 1):
+            if parts[i - 1] in ENV_PARENT_DIRS | {"deploy"}:
+                hits.append(parts[i])
+        for h in hits:
+            if h in KNOWN_ENVS:
+                found.setdefault(h, set()).add(p)
+        if p.startswith(".github/workflows/") and p.endswith((".yml", ".yaml")):
+            for h in WORKFLOW_ENV_RE.findall(read(p)):
+                found.setdefault(h, set()).add(p)
+    return {k: sorted(v) for k, v in sorted(found.items(), key=lambda kv: (KNOWN_ENVS + [kv[0]]).index(kv[0]))}
+
+
+def detect() -> dict:
+    files = all_files()
+    workspace = [w for w in WORKSPACE_FILES if w in files]
+    if "package.json" in files and '"workspaces"' in read("package.json"):
+        workspace.append("package.json workspaces")
+    if "Cargo.toml" in files and "[workspace]" in read("Cargo.toml"):
+        workspace.append("Cargo.toml [workspace]")
+    packages = sorted({p.rsplit("/", 1)[0] for p in files
+                       if "/" in p and p.rsplit("/", 1)[1] in PACKAGE_MANIFESTS and "node_modules/" not in p})
+    grouped = [p for p in packages if p.count("/") == 1 and p.split("/")[0] in PACKAGE_PARENTS]
+    siblings = sibling_repos()
+    submodules = ".gitmodules" in files
+
+    reasons = []
+    if workspace:
+        mode = "monorepo"
+        reasons.append(f"workspace config: {', '.join(workspace)}")
+    elif len(grouped) >= 2:
+        mode = "monorepo"
+        reasons.append(f"{len(grouped)} packages with their own manifest: {', '.join(grouped[:5])}")
+    elif siblings or submodules:
+        mode = "multi-repo"
+    else:
+        mode = "single"
+        reasons.append("no workspace config, package folders or sibling repos")
+    if siblings:
+        reasons.append(f"{len(siblings)} sibling git repo(s) in {PROJECT_ROOT.parent.name}/ -- candidates for [[repo]] pointers")
+    if submodules:
+        reasons.append(".gitmodules present -- submodules are other repos; point at them with [[repo]]")
+
+    top: dict[str, dict] = {}
+    for p in files:
+        if "/" in p:
+            d = top.setdefault(p.split("/", 1)[0], {"files": 0, "exts": {}})
+            d["files"] += 1
+            ext = Path(p).suffix or "(none)"
+            d["exts"][ext] = d["exts"].get(ext, 0) + 1
+    top_level = [{"path": k, "files": v["files"],
+                  "exts": [e for e, _ in sorted(v["exts"].items(), key=lambda kv: -kv[1])[:4]]}
+                 for k, v in sorted(top.items())]
+    root_files = [p for p in files if "/" not in p]
+    near_empty = all(p.startswith(".") or p.upper().startswith(("README", "LICENSE", "CHANGELOG"))
+                     for p in root_files) and not top_level
+    return {
+        "mode": mode, "reasons": reasons, "workspace": workspace, "packages": packages,
+        "sibling_repos": siblings, "submodules": submodules, "environments": detect_envs(files),
+        "top_level": top_level, "root_files": root_files, "near_empty": near_empty,
+        "manifest": MANIFEST.is_file(), "layouts": layouts(),
+    }
+
+
+def layouts() -> list[str]:
+    return sorted(p.stem for p in LAYOUTS_DIR.glob("*.toml")) if LAYOUTS_DIR.is_dir() else []
+
+
+def print_detect(d: dict) -> None:
+    print(f"Detected mode: {d['mode']}")
+    for r in d["reasons"]:
+        print(f"  - {r}")
+    if d["environments"]:
+        print("Environments seen: " + ", ".join(f"{k} ({len(v)})" for k, v in d["environments"].items()))
+    if d["top_level"]:
+        print("Top-level folders: " + ", ".join(f"{t['path']}/ ({t['files']})" for t in d["top_level"]))
+    print(f"Root files: {', '.join(d['root_files']) or '(none)'}")
+    if d["near_empty"]:
+        print("New repo: nothing here yet but README/LICENSE/dotfiles")
+    print(f"Layouts available: {', '.join(d['layouts']) or '(none installed)'}")
+
+
+def print_options(d: dict) -> None:
+    print("No .claude/structure.toml -- structure checking is off.\n")
+    print_detect(d)
+    print("""
+Modes:
+  single      one project, flat layout
+  monorepo    several apps/packages in one repo (apps/<name>/, packages/<name>/)
+  multi-repo  this repo is one of several; each runs its own babel-fish, and
+              [[repo]] entries point at the others
+
+To turn it on:
+  ask Claude to "set up the repo structure"   (structure-bootstrap skill: reads the
+                                               tree, fills in purposes, asks what it can't infer)
+  python .claude/project-map/structure-check.py --bootstrap                   (dump the current tree)
+  python .claude/project-map/structure-check.py --bootstrap --layout NAME     (start from a layout)""")
+
+
+def fmt(v) -> str:
+    if isinstance(v, list):
+        items = [json.dumps(x) for x in v]
+        one = "[" + ", ".join(items) + "]"
+        return one if len(one) <= 80 else "[\n" + "".join(f"  {x},\n" for x in items) + "]"
+    if isinstance(v, bool):
+        return str(v).lower()
+    return json.dumps(v) if isinstance(v, str) else str(v)
+
+
+def to_toml(m: dict) -> str:
+    lines = ["# Repo structure manifest -- checked by .claude/project-map/structure-check.py (#22).",
+             "# This is the repo's own data: edit it by hand; babel-fish never overwrites it."]
+    for k in ("mode", "env_roots", "root_files", "exceptions"):
+        if k in m:
+            lines.append(f"{k} = {fmt(m[k])}")
+    for table in ("folder", "environment", "repo"):
+        for t in m.get(table, []):
+            lines += ["", f"[[{table}]]"] + [f"{k} = {fmt(v)}" for k, v in t.items()]
+    return "\n".join(lines) + "\n"
+
+
+def bootstrap(layout: str | None, mode: str | None) -> int:
+    if MANIFEST.exists():
+        print(f"FAIL  {MANIFEST.relative_to(PROJECT_ROOT)} already exists -- edit it by hand; bootstrap never overwrites it")
+        return 2
+    d = detect()
+    today = date.today().isoformat()
+    if layout:
+        src = LAYOUTS_DIR / f"{layout}.toml"
+        if not src.is_file():
+            print(f"FAIL  no layout {layout!r} -- available: {', '.join(d['layouts']) or '(none installed)'}")
+            return 2
+        if tomllib is None:
+            warn_old_python()
+            return 0
+        m = load_manifest(src)
+    else:
+        m = {"mode": d["mode"], "root_files": d["root_files"], "folder": []}
+    if mode:
+        m["mode"] = mode
+
+    present = {t["path"] for t in d["top_level"]}
+    files, on_disk = tracked(), all_files()
+    for f in m.get("folder", []):  # a layout's folders: active if they exist, planned if not
+        exists = any(p.startswith(f["path"] + "/") for p in on_disk)
+        f["status"] = "active" if exists else "planned"
+        f.setdefault("added", today)
+    if not layout:
+        for top in sorted(present):
+            m["folder"].append({"path": top, "purpose": "TODO: what belongs here",
+                                "status": "active", "added": today})
+
+    # Seed the baseline: whatever fails today is allowed until fixed; only NEW violations block.
+    findings = check_folders(m, files, set()) + check_environments(m, files)
+    exc = set()
+    for f in findings:
+        if f.level == "FAIL" and f.exemptable:
+            unmapped = "under no manifest folder" in f.msg
+            exc.add(f.path.split("/", 1)[0] + "/**" if unmapped and "/" in f.path else f.path)
+    if exc:
+        m["exceptions"] = sorted(exc)
+
+    text = to_toml(m)
+    if d["environments"] and not m.get("environment"):
+        text += "\n# Environments seen in this tree -- declare them to turn on the dev -> stg -> prod rules:\n"
+        for name in d["environments"]:
+            target = "local" if name in ("local", "dev", "development") else "cloud"
+            text += f'# [[environment]]\n# name = "{name}"\n# target = "{target}"\n'
+    if m["mode"] == "multi-repo" and d["sibling_repos"] and not m.get("repo"):
+        text += "\n# Sibling repos -- uncomment the ones this repo works with:\n"
+        for name in d["sibling_repos"]:
+            text += f'# [[repo]]\n# name = "{name}"\n# path = "../{name}"\n# purpose = "TODO"\n'
+    MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+    MANIFEST.write_text(text)
+
+    print(f"Wrote {MANIFEST.relative_to(PROJECT_ROOT)} (mode: {m['mode']}"
+          + (f", layout: {layout}" if layout else "") + ")")
+    print(f"  {len(m.get('folder', []))} folders, {len(exc)} exception(s) seeded from today's tree")
+    secrets = check_secrets(files)
+    for f in secrets:
+        print(f"  FAIL  {f.path}  -- tracked secrets file; the check will fail until it is untracked")
+    print("Next: fill in each TODO purpose, tighten holds, run structure-check.py, commit the manifest.")
+    return 0
+
+
 # ── cli ──────────────────────────────────────────────────────────────────────
 
 def warn_old_python() -> None:
@@ -396,6 +631,11 @@ def warn_old_python() -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Check tracked files against .claude/structure.toml (#22).")
+    ap.add_argument("--detect", action="store_true", help="print repo facts (mode, environments, folders) and exit")
+    ap.add_argument("--json", action="store_true", help="with --detect: machine-readable output")
+    ap.add_argument("--bootstrap", action="store_true", help="write a starting manifest; never overwrites")
+    ap.add_argument("--layout", metavar="NAME", help="with --bootstrap: start from .claude/templates/structure/NAME.toml")
+    ap.add_argument("--mode", choices=MODES, help="with --bootstrap: override the detected mode")
     new = ap.add_mutually_exclusive_group()
     new.add_argument("--staged", action="store_true",
                      help="treat staged additions as new files (pre-commit)")
@@ -410,8 +650,17 @@ def main() -> None:
     if not is_git_repo():
         print(f"FAIL  {PROJECT_ROOT} is not a git repository -- structure-check reads the git index (git init first)")
         sys.exit(2)
+    if args.detect:
+        d = detect()
+        if args.json:
+            print(json.dumps(d, indent=2))
+        else:
+            print_detect(d)
+        sys.exit(0)
+    if args.bootstrap:
+        sys.exit(bootstrap(args.layout, args.mode))
     if not MANIFEST.is_file():
-        print("No .claude/structure.toml -- structure checking is off.")
+        print_options(detect())
         sys.exit(0)
     if tomllib is None:
         warn_old_python()

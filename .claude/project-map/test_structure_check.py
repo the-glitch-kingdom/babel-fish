@@ -368,6 +368,108 @@ def test_secret_variants_fail_examples_pass(tmp):
         assert p not in r.stdout, r.stdout
 
 
+# ── detect + bootstrap ───────────────────────────────────────────────────────
+# Repos go in tmp/"r" so the parent holds no other git repo (sibling detection).
+
+def detect(root: Path) -> dict:
+    import json
+    r = check(root, "--detect", "--json")
+    assert r.returncode == 0, r.stdout + r.stderr
+    return json.loads(r.stdout)
+
+
+def test_detect_single(tmp):
+    d = detect(make_repo(tmp / "r", {"README.md": "x", "src/a.py": "x"}, manifest=None))
+    assert d["mode"] == "single" and d["sibling_repos"] == [], d
+    assert d["top_level"][0]["path"] == "src" and d["root_files"] == ["README.md"], d
+
+
+def test_detect_monorepo_from_workspace_file(tmp):
+    d = detect(make_repo(tmp / "r", {"pnpm-workspace.yaml": "packages: []", "apps/web/index.ts": "x"}, manifest=None))
+    assert d["mode"] == "monorepo" and "pnpm-workspace.yaml" in d["reasons"][0], d
+
+
+def test_detect_monorepo_from_package_json_workspaces(tmp):
+    d = detect(make_repo(tmp / "r", {"package.json": '{"workspaces": ["apps/*"]}'}, manifest=None))
+    assert d["mode"] == "monorepo", d
+
+
+def test_detect_monorepo_from_two_packages(tmp):
+    tree = {"apps/api/pyproject.toml": "x", "apps/web/package.json": "{}"}
+    d = detect(make_repo(tmp / "r", tree, manifest=None))
+    assert d["mode"] == "monorepo" and d["packages"] == ["apps/api", "apps/web"], d
+
+
+def test_detect_multi_repo_from_sibling(tmp):
+    subprocess.run(["git", "init", "-q", str(tmp / "other")], check=True)
+    d = detect(make_repo(tmp / "r", {"README.md": "x"}, manifest=None))
+    assert d["mode"] == "multi-repo" and d["sibling_repos"] == ["other"], d
+
+
+def test_detect_environments(tmp):
+    tree = {"infra/env/dev/.env.example": "a", "infra/deploy/prod/main.tf": "b",
+            "docker-compose.staging.yml": "c", "infra/compose/dev.yml": "d",
+            ".github/workflows/deploy.yml": "jobs:\n  go:\n    environment: production\n"}
+    d = detect(make_repo(tmp / "r", tree, manifest=None))
+    assert list(d["environments"]) == ["dev", "staging", "prod", "production"], d["environments"]
+    assert "infra/compose/dev.yml" in d["environments"]["dev"], d["environments"]
+
+
+def test_detect_near_empty_and_untracked_files(tmp):
+    d = detect(make_repo(tmp / "r", {"README.md": "x", "LICENSE": "x"}, manifest=None))
+    assert d["near_empty"], d
+    (tmp / "r/src").mkdir()
+    (tmp / "r/src/new.py").write_text("x")  # untracked, not ignored: a new repo counts it
+    assert not detect(tmp / "r")["near_empty"]
+
+
+def test_no_manifest_prints_options(tmp):
+    r = check(make_repo(tmp / "r", {"README.md": "x"}, manifest=None))
+    assert r.returncode == 0, r.stdout
+    for s in ("structure checking is off", "Detected mode: single", "monorepo", "multi-repo",
+              "--bootstrap", "set up the repo structure"):
+        assert s in r.stdout, (s, r.stdout)
+
+
+def test_bootstrap_writes_a_manifest_that_passes(tmp):
+    root = make_repo(tmp / "r", {"README.md": "x", "src/a.py": "x", "tools/b.sh": "x"}, manifest=None)
+    r = check(root, "--bootstrap")
+    assert r.returncode == 0 and "Wrote .claude/structure.toml" in r.stdout, r.stdout
+    text = (root / ".claude/structure.toml").read_text()
+    assert 'path = "src"' in text and 'path = "tools"' in text and "TODO" in text, text
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    r = check(root)
+    assert r.returncode == 0, r.stdout
+
+
+def test_bootstrap_never_overwrites(tmp):
+    root = make_repo(tmp / "r", {"README.md": "x"})
+    before = (root / ".claude/structure.toml").read_text()
+    r = check(root, "--bootstrap")
+    assert r.returncode == 2 and "already exists" in r.stdout, r.stdout
+    assert (root / ".claude/structure.toml").read_text() == before
+
+
+def test_bootstrap_mode_override_and_commented_suggestions(tmp):
+    subprocess.run(["git", "init", "-q", str(tmp / "api")], check=True)
+    root = make_repo(tmp / "r", {"README.md": "x", "infra/env/dev/.env.example": "a"}, manifest=None)
+    assert check(root, "--bootstrap", "--mode", "multi-repo").returncode == 0
+    text = (root / ".claude/structure.toml").read_text()
+    assert 'mode = "multi-repo"' in text, text
+    assert '# name = "api"' in text and '# path = "../api"' in text, text   # sibling pointer, commented
+    assert '# name = "dev"' in text and '# target = "local"' in text, text   # seen env, commented
+
+
+def test_bootstrap_warns_about_tracked_secrets(tmp):
+    r = check(make_repo(tmp / "r", {"README.md": "x", "src/.env": "S=1"}, manifest=None), "--bootstrap")
+    assert r.returncode == 0 and "FAIL  src/.env" in r.stdout, r.stdout
+
+
+def test_bootstrap_unknown_layout_exits_2(tmp):
+    r = check(make_repo(tmp / "r", {"README.md": "x"}, manifest=None), "--bootstrap", "--layout", "nope")
+    assert r.returncode == 2 and "no layout 'nope'" in r.stdout, r.stdout
+
+
 def test_old_python_warns_and_skips(tmp):
     """Python < 3.11 has no tomllib: a readable WARN, exit 0, never a block."""
     make_repo(tmp, {"README.md": "x"})
