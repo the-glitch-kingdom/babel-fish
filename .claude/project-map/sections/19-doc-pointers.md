@@ -8,6 +8,7 @@
 - [`.documentation/architecture/project-map-watch-set.md`](.documentation/architecture/project-map-watch-set.md)
 - [`.documentation/architecture/session-vocabulary-mining.md`](.documentation/architecture/session-vocabulary-mining.md)
 - [`.documentation/quickstart/integration-with-semantic-memory.md`](.documentation/quickstart/integration-with-semantic-memory.md)
+- [`.documentation/standards/auto-loaded-context-check.md`](.documentation/standards/auto-loaded-context-check.md)
 - [`.documentation/troubleshooting/learned-vocabulary-empty.md`](.documentation/troubleshooting/learned-vocabulary-empty.md)
 - [`.documentation/troubleshooting/map-is-empty.md`](.documentation/troubleshooting/map-is-empty.md)
 - [`CHANGELOG.md`](CHANGELOG.md)

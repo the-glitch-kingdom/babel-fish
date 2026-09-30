@@ -10,6 +10,8 @@ or writes the real repo (#18).
 from __future__ import annotations
 
 import inspect
+import json
+import re
 import shutil
 import subprocess
 import sys
@@ -372,7 +374,6 @@ def test_secret_variants_fail_examples_pass(tmp):
 # Repos go in tmp/"r" so the parent holds no other git repo (sibling detection).
 
 def detect(root: Path) -> dict:
-    import json
     r = check(root, "--detect", "--json")
     assert r.returncode == 0, r.stdout + r.stderr
     return json.loads(r.stdout)
@@ -519,7 +520,6 @@ def test_bootstrap_from_layout_on_a_new_repo_plans_everything(tmp):
 
 def test_skill_only_names_flags_and_paths_that_exist():
     """The skill drives the script: a renamed flag or moved template breaks it silently."""
-    import re
     skill = (REPO / "skills/structure-bootstrap/SKILL.md").read_text()
     assert skill.startswith("---\nname: structure-bootstrap\n"), skill[:60]
     helptext = subprocess.run([sys.executable, str(SCRIPT), "--help"], capture_output=True, text=True).stdout
