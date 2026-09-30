@@ -253,6 +253,7 @@ The map shows where things **are**. An opt-in `.claude/structure.toml` says wher
   - local tooling stays out of the cloud environments, and deploy config out of local ones
   - migrations are shared across environments
   - a real `.env` is never committed
+- **One `.env`, not twenty:** a single committed `.env.example` holds every key for every environment and app, and the one real `.env` sits beside it, gitignored. Stray templates, per-app `.env` files and a `.env` that git would commit all get caught.
 - **Modes:** `single`, `monorepo`, or `multi-repo`. In multi-repo, `[[repo]]` entries point at sibling repos, each running its own babel-fish.
 - **Adoption blocks nothing:** `--bootstrap` seeds an `exceptions` baseline from today's tree, so only *new* violations fail.
 

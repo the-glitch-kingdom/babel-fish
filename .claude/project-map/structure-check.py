@@ -52,7 +52,11 @@ DEFAULT_ENV_ROOTS = ["infra/env", "infra/deploy"]
 SHARED_ENV_DIRS = {"base", "shared", "common", "modules"}
 ENV_PARENT_DIRS = {"env", "envs", "environments", "overlays", "config"}  # <parent>/<env>/ outside env_roots
 MIGRATION_DIRS = {"migrations", "migration", "alembic"}
-SECRET_OK_SUFFIXES = (".example", ".sample", ".template", ".dist")  # .env.example, .env.prod.example ...
+# .env files: ONE committed template (env_file, always named .env.example) holding every key for every
+# environment and app, and ONE real .env beside it, gitignored. Stg/prod values come from the secret
+# manager or CI, never from more files in the repo.
+TEMPLATE_SUFFIXES = (".example", ".sample", ".template", ".dist")
+TEMPLATE_WORDS = {"example", "sample", "template", "dist"}
 # ponytail: fixed lists — extend here when a real repo needs another platform
 LOCAL_ONLY = ["**/*compose*.yml", "**/*compose*.yaml", "**/seed*", "**/seeds/**",
               "**/fixtures/**", "**/*.pem", "**/*.crt", "**/*.key"]
@@ -136,6 +140,8 @@ def validate(m: dict) -> list[str]:
     for key in ("root_files", "exceptions", "env_roots"):
         if key in m and not _str_list(m[key]):
             errs.append(f"{key} must be a list of strings")
+    if "env_file" in m and (not isinstance(m["env_file"], str) or m["env_file"].rsplit("/", 1)[-1] != ".env.example"):
+        errs.append(f"env_file = {m['env_file']!r}; must be a path to a file named .env.example")
 
     seen = set()
     for i, f in enumerate(m.get("folder", [])):
@@ -227,8 +233,9 @@ def check_folders(m: dict, files: dict[str, str], new: set[str]) -> list[Finding
     folders = sorted(m.get("folder", []), key=lambda f: -f["path"].count("/") - len(f["path"]))
     root_files = m.get("root_files", [])
     out, used = [], set()
+    approved = {".claude/structure.toml", env_file_path(m)}  # the manifest and the one env template
     for path in sorted(files):
-        if path == ".claude/structure.toml":  # the manifest never has to list itself
+        if path in approved:  # declared by the manifest itself; never has to be listed again
             continue
         f = owner(path, folders)
         if f is None:
@@ -256,17 +263,66 @@ def check_folders(m: dict, files: dict[str, str], new: set[str]) -> list[Finding
     return out
 
 
-def check_secrets(files: dict[str, str]) -> list[Finding]:
-    """A real .env is never committed, in any mode, and no exception can allow it."""
+def env_kind(name: str) -> str | None:
+    """-> "secret" (real values), "template" (keys + placeholders) or None (not an env file)."""
+    if name.endswith(TEMPLATE_SUFFIXES) and (name.startswith((".env.", "env.")) or ".env." in name):
+        return "template"  # .env.example, .env.prod.example, env.sample, api.env.example
+    if name.endswith(".env") and name.split(".")[0] in TEMPLATE_WORDS:
+        return "template"  # example.env
+    if name == ".env" or name.startswith(".env.") or name.endswith(".env"):
+        return "secret"    # .env, .env.local, .env.production, prod.env
+    return None
+
+
+def env_file_path(m: dict) -> str:
+    """The one committed template: env_file, else <first env_root>/.env.example with environments, else root."""
+    if m.get("env_file"):
+        return m["env_file"].strip("/")
+    if m.get("environment"):
+        return m.get("env_roots", DEFAULT_ENV_ROOTS)[0].strip("/") + "/.env.example"
+    return ".env.example"
+
+
+def check_secrets(files) -> list[Finding]:
+    """A real .env is never committed, in any mode; only an exact-path exception allows one."""
     out = []
     for path in files:
-        name = path.rsplit("/", 1)[-1]
-        if name.endswith(SECRET_OK_SUFFIXES) or not (name == ".env" or name.startswith(".env.") or name.endswith(".env")):
+        if env_kind(path.rsplit("/", 1)[-1]) != "secret":
             continue
         out.append(Finding("FAIL", path, "secrets file is tracked -- git rm --cached it, keep values in "
                            "the environment or a secret manager, commit only .env.example (a committed "
                            "test fixture with no real secrets: list its exact path in exceptions)",
                            exemptable=False))
+    return out
+
+
+def check_env_files(m: dict, files: dict[str, str]) -> list[Finding]:
+    """As close to a single .env as the structure allows: one template, one real file beside it."""
+    want = env_file_path(m)
+    home = want.rsplit("/", 1)[0] if "/" in want else ""
+    real = f"{home}/.env" if home else ".env"
+    out = check_secrets(files)
+    for path in sorted(files):
+        if env_kind(path.rsplit("/", 1)[-1]) != "template" or path == want:
+            continue
+        here = path.rsplit("/", 1)[0] if "/" in path else ""
+        if here == home:
+            out.append(Finding("FAIL", path, f"env template named differently -- rename it to {want}"))
+        else:
+            out.append(Finding("FAIL", path, f"scattered env template -- merge its keys into {want} and delete "
+                               "this one (one template covers every environment and app; an app that "
+                               f"expects its own .env loads {real} via --env-file / dotenv, or a symlink)"))
+
+    # The working tree, not the index: this is what stops a real .env being committed in the first
+    # place. In CI the tree is a clean checkout, so these find nothing.
+    for path in git("ls-files", "--others", "--exclude-standard", "-z").split("\0"):
+        if path and env_kind(path.rsplit("/", 1)[-1]) == "secret":
+            out.append(Finding("FAIL", path, "real env file is not gitignored -- `git add -A` would commit it: "
+                               "add `.env` and `.env.*` (with `!.env.example`) to .gitignore", exemptable=False))
+    for path in git("ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z").split("\0"):
+        if path and not path.endswith("/") and path != real and env_kind(path.rsplit("/", 1)[-1]) == "secret":
+            out.append(Finding("WARN", path, f"local env file outside {real} -- merge its values into {real} "
+                               "and delete it (one real .env; stg/prod values live in the secret manager)"))
     return out
 
 
@@ -385,7 +441,9 @@ def run(m: dict, staged: bool, since: str | None) -> int:
     """Print the report; return the number of FAILs."""
     files = tracked()
     findings = (check_folders(m, files, added(staged, since)) + check_environments(m, files)
-                + check_secrets(files) + check_repos(m))
+                + check_env_files(m, files) + check_repos(m))
+    hard = {f.path for f in findings if not f.exemptable}  # a secret is reported as a secret, not twice
+    findings = [f for f in findings if not f.exemptable or f.path not in hard]
     findings, baselined = apply_exceptions(findings, m.get("exceptions", []))
     fails = [f for f in findings if f.level == "FAIL"]
     warns = [f for f in findings if f.level == "WARN"]
@@ -498,12 +556,16 @@ def detect() -> dict:
                   "exts": [e for e, _ in sorted(v["exts"].items(), key=lambda kv: -kv[1])[:4]]}
                  for k, v in sorted(top.items())]
     root_files = [p for p in files if "/" not in p]
+    ignored = [p for p in git("ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z").split("\0")
+               if p and not p.endswith("/")]
+    env_files = {"templates": [p for p in files if env_kind(p.rsplit("/", 1)[-1]) == "template"],
+                 "real": sorted(p for p in files + ignored if env_kind(p.rsplit("/", 1)[-1]) == "secret")}
     near_empty = all(p.startswith(".") or p.upper().startswith(("README", "LICENSE", "CHANGELOG"))
                      for p in root_files) and not top_level
     return {
         "mode": mode, "reasons": reasons, "workspace": workspace, "packages": packages,
         "sibling_repos": siblings, "submodules": submodules, "environments": detect_envs(files),
-        "top_level": top_level, "root_files": root_files, "near_empty": near_empty,
+        "top_level": top_level, "root_files": root_files, "env_files": env_files, "near_empty": near_empty,
         "manifest": MANIFEST.is_file(), "layouts": layouts(),
     }
 
@@ -521,6 +583,10 @@ def print_detect(d: dict) -> None:
     if d["top_level"]:
         print("Top-level folders: " + ", ".join(f"{t['path']}/ ({t['files']})" for t in d["top_level"]))
     print(f"Root files: {', '.join(d['root_files']) or '(none)'}")
+    ef = d["env_files"]
+    if ef["templates"] or ef["real"]:
+        print(f"Env files: {len(ef['templates'])} template(s) {ef['templates']}, {len(ef['real'])} real {ef['real']}"
+              + ("  -- aim for one of each" if len(ef["templates"]) > 1 or len(ef["real"]) > 1 else ""))
     if d["near_empty"]:
         print("New repo: nothing here yet but README/LICENSE/dotfiles")
     print(f"Layouts available: {', '.join(d['layouts']) or '(none installed)'}")
@@ -556,7 +622,7 @@ def fmt(v) -> str:
 def to_toml(m: dict) -> str:
     lines = ["# Repo structure manifest -- checked by .claude/project-map/structure-check.py (#22).",
              "# This is the repo's own data: edit it by hand; babel-fish never overwrites it."]
-    for k in ("mode", "env_roots", "root_files", "exceptions"):
+    for k in ("mode", "env_roots", "env_file", "root_files", "exceptions"):
         if k in m:
             lines.append(f"{k} = {fmt(m[k])}")
     for table in ("folder", "environment", "repo"):
@@ -598,9 +664,14 @@ def bootstrap(layout: str | None, mode: str | None) -> int:
         purpose = "TODO: what belongs here" + (f" (not in the {layout} layout)" if layout else "")
         m.setdefault("folder", []).append({"path": top, "purpose": purpose, "status": "active", "added": today})
 
+    templates = [p for p in files if env_kind(p.rsplit("/", 1)[-1]) == "template"]
+    if len(templates) == 1 and templates[0].rsplit("/", 1)[-1] == ".env.example":
+        m["env_file"] = templates[0]  # already unified: the existing location wins over the layout's
+
     # Seed the baseline: whatever fails today is allowed until fixed; only NEW violations block.
-    findings = check_folders(m, files, set()) + check_environments(m, files)
-    secrets = check_secrets(files)
+    env = check_env_files(m, files)
+    findings = check_folders(m, files, set()) + check_environments(m, files) + env
+    secrets = [f for f in env if f.level == "FAIL" and not f.exemptable]
     never = {f.path for f in secrets}  # an exact-path exception would also silence the secrets FAIL
     exc = set()
     for f in findings:
@@ -626,8 +697,10 @@ def bootstrap(layout: str | None, mode: str | None) -> int:
           + (f", layout: {layout}" if layout else "") + ")")
     print(f"  {len(m.get('folder', []))} folders, {len(exc)} exception(s) seeded from today's tree")
     for f in secrets:
-        print(f"  FAIL  {f.path}  -- tracked secrets file; the check fails until it is untracked "
-              "(or, if it holds no real secrets, its exact path is added to exceptions by hand)")
+        print(f"  FAIL  {f.path}  -- {f.msg.split(' -- ', 1)[0]}; the check fails until it's fixed "
+              "(a committed fixture with no real secrets: add its exact path to exceptions by hand)")
+    if len(templates) > 1:
+        print(f"  {len(templates)} env templates -- all but {env_file_path(m)} are in exceptions as the merge backlog")
     print("Next: fill in each TODO purpose, tighten holds, run structure-check.py, commit the manifest.")
     return 0
 

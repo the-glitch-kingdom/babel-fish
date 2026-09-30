@@ -68,6 +68,8 @@ The check warns when a planned folder gets its first files. Flip it to `active`.
 |---|---|
 | **Add a folder** | Add a `[[folder]]` with a `purpose` (and `holds`). Use `status = "planned"` if it doesn't exist yet, `active` once it has files. |
 | **Add an app** (monorepo) | Create `apps/<name>/`. `apps` holds `*/**`, so nothing else changes. The app's environment config goes in `infra/env/<env>/`, never `apps/<name>/env/`. |
+| **Add an env variable** | Add the key, with a placeholder, to the one `env_file` template. Put the dev value in the real `.env` beside it; stg/prod values go in the secret manager or CI. Never start a second template. |
+| **Unify scattered `.env` files** | For each template in the `exceptions` backlog, merge its keys into `env_file`, delete it, and remove its exception. Point apps that expected their own `.env` at the shared one (`--env-file`, dotenv, symlink). Local real `.env` files the check warns about get merged into the one real `.env`. |
 | **Add an environment** | Add an `[[environment]]` with `target` and `promotes_to`, plus `mirrors` if it must match another. Create `<env_root>/<name>/` holding only what differs. If it mirrors, give it the same file set. |
 | **Move files** | `git mv`, then adjust `holds` or folders in the same commit. A new path inside a `deprecated` folder is blocked. |
 | **Retire a folder** | 1. Set `status = "deprecated"`: new files are blocked. 2. Move the contents out, over as many commits as needed. 3. When the check warns it's empty, remove the `[[folder]]` entry and the folder **in one commit**. Git history keeps both. |

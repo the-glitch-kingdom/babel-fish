@@ -89,7 +89,7 @@ Then pick the flow:
      real contents (`git ls-files <folder> | sed 's/.*\.//' | sort | uniq -c`).
      `--detect` lists only the top few extensions per folder, and holds built from
      that alone will FAIL on the rest. E.g. `["**/*.py"]` for a Python package,
-     `["*/.env.example"]` for `infra/env`. Leave `holds` out for folders that
+     `[".env.example", "README.md", "*/**"]` for `infra/env`. Leave `holds` out for folders that
      legitimately hold anything.
    - **environments:** from `environments` in the facts. Targets: `dev` / `local` →
      `local`, everything else → `cloud`. Ask if a name is ambiguous (`test`, `qa`).
@@ -97,13 +97,25 @@ Then pick the flow:
      `env_roots` if env folders live somewhere other than `infra/env` and `infra/deploy`
      (e.g. `k8s/overlays`).
    - **root_files:** keep what's there; globs for families (`*.lock`, `tsconfig*.json`).
+   - **env files (goal: as close to one `.env` as the structure allows):** Step 0's
+     `env_files` lists every template and real env file. There should be one
+     template, `env_file` (`.env.example`, holding every key for every environment
+     and app), and one real `.env` beside it, gitignored. Stg/prod values belong in
+     the secret manager or CI.
+     - Bootstrap keeps an existing single template where it is. Extra templates land
+       in `exceptions` as the merge backlog. Tell the user how many and where.
+     - Offer to merge them: union the keys into `env_file`, delete the extras, and
+       point apps that load their own `.env` at the shared one. Do it only with the
+       user's go-ahead; it changes how apps load config.
+     - Leave vendored third-party templates (sample apps, vendored frameworks) in
+       `exceptions`. Don't merge them.
 4. Run the check:
    ```bash
    python3 .claude/project-map/structure-check.py
    ```
    Straight after bootstrap it's usually green. Tightening `holds` is what surfaces
    FAILs. Also review the `exceptions` bootstrap added: a file that legitimately
-   belongs at the root (`.env.example`, `.gitleaks.toml`) goes in `root_files`, not
+   belongs at the root (`.gitleaks.toml`) goes in `root_files`, not
    the backlog. For each FAIL on a file that already exists, either widen `holds` (the manifest
    was wrong) or add the path to `exceptions` (the file is in the wrong place). Tell
    the user which ones you put in `exceptions`: that list is the cleanup backlog.
@@ -112,8 +124,9 @@ Then pick the flow:
    path to `exceptions` only if the user confirms it's a committed test fixture with
    no real secrets (e.g. a vendored `.env.testing`). Never decide that yourself.
 5. List what differs from the layout as suggestions, not changes. For example:
-   "secrets config lives in `apps/api/config/prod.env`; the layout puts it in
-   `infra/env/prod/`".
+   "Compose files live at the root; the layout puts them in `infra/compose/`", or
+   "3 `.env.example` files (`apps/api`, `apps/web`, root); one at `infra/env/` would
+   cover all of them".
 6. Wiring: `.githooks/pre-commit` should contain a `Structure Check` block (re-run
    `npx @theglitchking/babel-fish init` if not). `git config core.hooksPath` should
    print `.githooks`. If the repo has CI (`.github/workflows/`), offer the CI step
@@ -173,7 +186,7 @@ new repo (Flow B). Never overwrite an existing file; propose a diff instead.
 
   - ALWAYS check `.claude/structure.toml` before creating a folder or a new kind of file — it lists where things go. → `<procedure doc>`
   - NEVER create a top-level folder or a per-environment copy of a file without asking — structure-check blocks the commit. → `<procedure doc>`
-  - NEVER commit a real `.env` — only `.env.example`; values live in the environment or a secret manager. → `<procedure doc>`
+  - NEVER add a second `.env` or `.env.example` — one template (`<env_file>`) and one gitignored `.env` beside it; stg/prod values live in the secret manager. → `<procedure doc>`
   ```
 - **Procedure doc `changing-repo-structure.md`:** the Flow D table, rendered for this
   repo's actual mode, env_roots and environments. Where it goes:

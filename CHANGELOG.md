@@ -28,6 +28,15 @@ All notable changes to this project will be documented in this file.
   `env_roots` fail. A tracked `.env` fails in every mode. Only an exact-path
   exception, added by hand for a committed test fixture, can allow one.
 
+  **One `.env`, as close as the structure allows.** A single committed template
+  (`env_file`, default `infra/env/.env.example`) holds every key for every
+  environment and app; the one real `.env` sits beside it, gitignored; stg/prod values
+  come from the secret manager. Any other template (per-app, per-environment,
+  `.env.sample`, `example.env`) fails with "merge its keys into env_file". A real
+  env file that git would commit fails before it is staged, and scattered local ones
+  warn. Bootstrap keeps an existing single template where it is and puts extra
+  templates in the backlog.
+
   **Detection and adoption.** `--detect [--json]` reports facts: best-guess mode with
   reasons, environments seen, top-level folders, sibling repos, and whether the repo is
   new. `--bootstrap [--layout single|monorepo|multi-repo]` writes a starting manifest

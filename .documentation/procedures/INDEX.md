@@ -25,7 +25,7 @@ purpose: Complete listing of procedures documentation
 
 | Document | Status | Updated | Words |
 |----------|--------|---------|-------|
-| [Changing repo structure](changing-repo-structure.md) | active | 2026-09-30 | 573 |
+| [Changing repo structure](changing-repo-structure.md) | active | 2026-09-30 | 696 |
 
 ## Keywords
 

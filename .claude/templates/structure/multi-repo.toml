@@ -10,6 +10,7 @@
 # path -- adopting it blocks nothing. The
 # structure-bootstrap skill reads it to suggest purposes and changes.
 mode = "multi-repo"
+env_file = "infra/env/.env.example"  # the ONE committed env template (every key, every env and app)
 root_files = [
   "README.md", "LICENSE", "CHANGELOG.md", "CLAUDE.md", "AGENTS.md",
   ".gitignore", ".gitattributes", ".editorconfig", ".dockerignore", ".mcp.json",
@@ -41,8 +42,8 @@ holds = ["*.yml", "*.yaml"]
 
 [[folder]]
 path = "infra/env"
-purpose = "Per-environment config: <env>/.env.example only -- real .env files stay untracked"
-holds = ["*/.env.example", "README.md"]
+purpose = "Env config: .env.example is the one template (every key, placeholders) and your local .env sits beside it, gitignored. Stg/prod values come from the secret manager or CI, never from files here; <env>/ holds only non-secret per-env deltas"
+holds = [".env.example", "README.md", "*/**"]
 
 [[folder]]
 path = "infra/deploy"

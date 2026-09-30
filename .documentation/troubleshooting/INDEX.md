@@ -27,7 +27,7 @@ purpose: Complete listing of troubleshooting documentation
 |----------|--------|---------|-------|
 | [Learned vocabulary is empty](learned-vocabulary-empty.md) | active | 2026-09-04 | 436 |
 | [Project map is empty or stale](map-is-empty.md) | active | 2026-09-04 | 740 |
-| [Structure check failures](structure-check-failures.md) | active | 2026-09-30 | 728 |
+| [Structure check failures](structure-check-failures.md) | active | 2026-09-30 | 857 |
 
 ## Keywords
 

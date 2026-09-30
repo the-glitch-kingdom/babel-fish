@@ -26,7 +26,7 @@ purpose: Complete listing of standards documentation
 | Document | Status | Updated | Words |
 |----------|--------|---------|-------|
 | [Auto-loaded context check](auto-loaded-context-check.md) | active | 2026-09-25 | 162 |
-| [Repo structure check](repo-structure-check.md) | active | 2026-09-30 | 1,433 |
+| [Repo structure check](repo-structure-check.md) | active | 2026-09-30 | 1,843 |
 
 ## Keywords
 

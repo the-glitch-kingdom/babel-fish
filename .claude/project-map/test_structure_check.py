@@ -261,9 +261,7 @@ target = "cloud"
 
 ENV_TREE = {
     "README.md": "x",
-    "infra/env/dev/.env.example": "A=dev\n",
-    "infra/env/stg/.env.example": "A=stg\n",
-    "infra/env/prod/.env.example": "A=prod\n",
+    "infra/env/.env.example": "A=\n",   # the one template, for every environment
     "infra/compose/base.yml": "services: {}\n",
     "infra/deploy/base/main.tf": "module {}\n",
     "infra/deploy/stg/main.tf": "env = stg\n",
@@ -345,9 +343,102 @@ def test_per_environment_workflow_copies_warn(tmp):
 
 
 def test_no_environments_declared_skips_env_rules(tmp):
-    m = ENV_MANIFEST.split("[[environment]]")[0]
+    m = ENV_MANIFEST.split("[[environment]]")[0].replace('root_files', 'env_file = "infra/env/.env.example"\nroot_files')
     tree = {**ENV_TREE, "infra/env/qa/x": "1", "infra/deploy/prod/redis.tf": "r"}
     assert check(make_repo(tmp, tree, manifest=m)).returncode == 0
+
+
+# ── env files: one template, one real .env ───────────────────────────────────
+
+SINGLE_ENV = BASE_MANIFEST.replace('["**/*.py"]', '["**"]') + '\n[[folder]]\npath = "apps"\n'
+
+
+def test_one_env_template_passes_a_second_anywhere_fails(tmp):
+    assert check(make_repo(tmp / "a", {"README.md": "x", ".env.example": "A="},
+                           manifest=SINGLE_ENV.replace('["README.md"]', '["README.md", ".env.example"]'))).returncode == 0
+    r = check(make_repo(tmp / "b", {"README.md": "x", ".env.example": "A=", "apps/api/.env.example": "B="},
+                        manifest=SINGLE_ENV.replace('["README.md"]', '["README.md", ".env.example"]')))
+    assert r.returncode == 1 and "FAIL  apps/api/.env.example  -- scattered env template" in r.stdout, r.stdout
+    assert "merge its keys into .env.example" in r.stdout, r.stdout
+
+
+def test_misnamed_template_beside_env_file_must_be_renamed(tmp):
+    m = SINGLE_ENV.replace('["README.md"]', '["README.md", ".env.*"]')
+    r = check(make_repo(tmp, {"README.md": "x", ".env.sample": "A="}, manifest=m))
+    assert r.returncode == 1 and "FAIL  .env.sample  -- env template named differently" in r.stdout, r.stdout
+
+
+def test_env_file_setting_moves_the_one_template(tmp):
+    m = SINGLE_ENV.replace('root_files', 'env_file = "src/.env.example"\nroot_files')
+    assert check(make_repo(tmp / "a", {"README.md": "x", "src/.env.example": "A="}, manifest=m)).returncode == 0
+    bad = m.replace('src/.env.example"\n', 'src/env.template"\n', 1)
+    r = check(make_repo(tmp / "b", {"README.md": "x"}, manifest=bad))
+    assert r.returncode == 2 and "must be a path to a file named .env.example" in r.stdout, r.stdout
+
+
+def test_with_environments_the_template_defaults_to_the_env_root(tmp):
+    r = check(make_repo(tmp, {**ENV_TREE, ".env.example": "A="}, manifest=ENV_MANIFEST.replace(
+        'root_files = ["README.md"]', 'root_files = ["README.md", ".env.example"]')))
+    assert r.returncode == 1 and "FAIL  .env.example  -- scattered env template" in r.stdout, r.stdout
+    assert "merge its keys into infra/env/.env.example" in r.stdout, r.stdout
+
+
+def test_real_env_that_git_would_commit_fails_before_it_is_staged(tmp):
+    root = make_repo(tmp, {"README.md": "x", ".env.example": "A="},
+                     manifest=SINGLE_ENV.replace('["README.md"]', '["README.md", ".env.example", ".gitignore"]'))
+    (root / ".env").write_text("A=real")                      # untracked, NOT ignored
+    r = check(root)
+    assert r.returncode == 1 and "FAIL  .env  -- real env file is not gitignored" in r.stdout, r.stdout
+    (root / ".gitignore").write_text(".env\n.env.*\n!.env.example\n")
+    subprocess.run(["git", "add", ".gitignore"], cwd=root, check=True)
+    r = check(root)
+    assert r.returncode == 0 and ".env " not in r.stdout.replace(".env.example", ""), r.stdout
+
+
+def test_scattered_local_env_files_warn(tmp):
+    root = make_repo(tmp, {"README.md": "x", ".env.example": "A=", ".gitignore": ".env\n.env.*\n!.env.example\n"},
+                     manifest=SINGLE_ENV.replace('["README.md"]', '["README.md", ".env.example", ".gitignore"]'))
+    (root / ".env").write_text("A=dev")                        # the one real file: fine
+    (root / "apps/api").mkdir(parents=True)
+    (root / "apps/api/.env.local").write_text("A=other")       # scattered, ignored
+    r = check(root)
+    assert r.returncode == 0, r.stdout
+    assert "WARN  apps/api/.env.local  -- local env file outside .env" in r.stdout, r.stdout
+    assert "WARN  .env " not in r.stdout, r.stdout
+
+
+def test_bootstrap_keeps_an_existing_single_template_where_it_is(tmp):
+    root = make_repo(tmp / "r", {"README.md": "x", "src/a.py": "x", ".env.example": "A="}, manifest=None)
+    assert check(root, "--bootstrap", "--layout", "single").returncode == 0
+    text = (root / ".claude/structure.toml").read_text()
+    import tomllib
+    m = tomllib.loads(text)
+    assert m["env_file"] == ".env.example" and ".env.example" not in m.get("exceptions", []), text
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    r = check(root)
+    assert "scattered env template" not in r.stdout, r.stdout
+
+
+def test_bootstrap_puts_extra_templates_in_the_merge_backlog(tmp):
+    tree = {"README.md": "x", "src/a.py": "x", ".env.example": "A=", "src/.env.sample": "B=", "tools/.env.example": "C="}
+    root = make_repo(tmp / "r", tree, manifest=None)
+    r = check(root, "--bootstrap", "--layout", "single")
+    assert r.returncode == 0 and "3 env templates" in r.stdout, r.stdout
+    text = (root / ".claude/structure.toml").read_text()
+    assert '"src/.env.sample"' in text and '"tools/.env.example"' in text, text
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    assert check(root).returncode == 0
+    (root / "src/.env.example").write_text("D=")               # a NEW scattered template still fails
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    r = check(root)
+    assert r.returncode == 1 and "FAIL  src/.env.example" in r.stdout, r.stdout
+
+
+def test_detect_lists_env_files(tmp):
+    root = make_repo(tmp / "r", {".gitignore": ".env\n", ".env.example": "A=", "apps/x/.env.sample": "B="}, manifest=None)
+    (root / ".env").write_text("A=1")
+    d = detect(root)
+    assert d["env_files"] == {"templates": [".env.example", "apps/x/.env.sample"], "real": [".env"]}, d["env_files"]
 
 
 # ── secrets ──────────────────────────────────────────────────────────────────
@@ -374,12 +465,15 @@ def test_secret_fixture_can_be_excepted_by_exact_path_only(tmp):
 def test_secret_variants_fail_examples_pass(tmp):
     m = BASE_MANIFEST.replace('["**/*.py"]', '["**"]')
     bad = {"src/.env.production": "x", "src/prod.env": "x"}
-    ok = {"src/.env.example": "x", "src/.env.prod.example": "x", "src/.envrc": "x"}
-    r = check(make_repo(tmp, {"README.md": "x", **bad, **ok}, manifest=m))
+    templates = {"src/.env.example": "x", "src/.env.prod.example": "x", "src/example.env": "x", "src/env.sample": "x"}
+    unrelated = {"src/.envrc": "x", "src/env.d.ts": "x", "src/vite-env.d.ts": "x"}
+    r = check(make_repo(tmp, {"README.md": "x", **bad, **templates, **unrelated}, manifest=m))
     assert r.returncode == 1, r.stdout
     for p in bad:
-        assert f"FAIL  {p}" in r.stdout, r.stdout
-    for p in ok:
+        assert f"FAIL  {p}  -- secrets file is tracked" in r.stdout, r.stdout
+    for p in templates:  # templates are never mistaken for secrets
+        assert f"{p}  -- secrets" not in r.stdout and f"FAIL  {p}  -- scattered env template" in r.stdout, r.stdout
+    for p in unrelated:
         assert p not in r.stdout, r.stdout
 
 
@@ -421,7 +515,7 @@ def test_detect_multi_repo_from_sibling(tmp):
 
 
 def test_detect_environments(tmp):
-    tree = {"infra/env/dev/.env.example": "a", "infra/deploy/prod/main.tf": "b",
+    tree = {"infra/env/dev/settings.yaml": "a", "infra/deploy/prod/main.tf": "b",
             "docker-compose.staging.yml": "c", "infra/compose/dev.yml": "d",
             ".github/workflows/deploy.yml": "jobs:\n  go:\n    environment: production\n"}
     d = detect(make_repo(tmp / "r", tree, manifest=None))
@@ -486,6 +580,7 @@ def test_bootstrap_warns_about_tracked_secrets_and_never_baselines_them(tmp):
     subprocess.run(["git", "add", "-A"], cwd=root, check=True)
     r = check(root)
     assert r.returncode == 1 and "FAIL  .env " in r.stdout and "FAIL  src/.env " in r.stdout, r.stdout
+    assert "FAIL  .env  -- root file" not in r.stdout, "a secret must not also be reported as an unlisted root file"
 
 
 def test_bootstrap_unknown_layout_exits_2(tmp):
@@ -509,7 +604,7 @@ def test_every_shipped_layout_is_a_valid_manifest(tmp):
 
 
 def test_bootstrap_from_layout_adopts_an_existing_repo(tmp):
-    tree = {"README.md": "x", "src/a.py": "x", "infra/env/dev/.env.example": "a",
+    tree = {"README.md": "x", "src/a.py": "x", "infra/env/.env.example": "a",
             "legacy/old.py": "x", "notes.txt": "x", "infra/compose/notes.txt": "x"}
     root = make_repo(tmp / "r", tree, manifest=None)
     r = check(root, "--bootstrap", "--layout", "single")
@@ -684,8 +779,7 @@ REALISTIC_MONOREPO = {
     "packages/ui/package.json": '{"name": "ui"}', "packages/ui/src/button.tsx": "btn",
     "infra/compose/base.yml": "services: {api: {}}", "infra/compose/dev.yml": "dev override",
     "infra/compose/remote.yml": "remote override",
-    "infra/env/dev/.env.example": "API_URL=http://localhost", "infra/env/stg/.env.example": "API_URL=https://stg",
-    "infra/env/prod/.env.example": "API_URL=https://prod", "infra/env/README.md": "how env config works",
+    "infra/env/.env.example": "API_URL=\nDATABASE_URL=\n", "infra/env/README.md": "how env config works",
     "infra/deploy/base/main.tf": "module", "infra/deploy/base/variables.tf": "vars",
     "infra/deploy/stg/main.tf": 'module "app" { source = "../base" }',
     "infra/deploy/prod/main.tf": 'module "app" { source = "../base" }',  # identical ACROSS envs is fine
@@ -713,17 +807,21 @@ def test_realistic_monorepo_catches_the_classic_drift(tmp):
     m = m.replace('mode = "monorepo"', 'mode = "monorepo"\nenv_roots = ["infra/env", "infra/deploy", "k8s/overlays"]')
     m += '\n[[folder]]\npath = "k8s"\npurpose = "Kustomize base + per-env overlays"\n'
     drift = {
-        "apps/api/config/prod/.env.example": "per-app env config",        # per-app config/<env>/
-        "apps/api/env/prod/.env.example": "per-app env folder",            # per-app env folder
+        "apps/api/config/prod/settings.yaml": "per-app env config",       # per-app config/<env>/
+        "apps/api/env/prod/settings.yaml": "per-app env folder",           # per-app env folder
+        "apps/web/.env.example": "NEXT_PUBLIC_X=",                         # scattered template (per-app)
+        "infra/env/prod/.env.example": "API_URL=",                         # scattered template (per-env)
         "infra/deploy/prod/redis.tf": "redis only in prod",                 # stg no longer mirrors prod
         "infra/deploy/prod/variables.tf": "vars",                           # copy of base/variables.tf
-        "infra/env/qa/.env.example": "QA=1",                                # undeclared environment
+        "infra/env/qa/settings.yaml": "QA=1",                              # undeclared environment
         "apps/api/migrations/prod/002_hotfix.sql": "prod-only migration",   # per-env migration
         "docker-compose.yml": "compose at the root",                        # compose outside infra/compose
     }
     r = check(make_repo(tmp / "r", {**REALISTIC_MONOREPO, **drift}, manifest=m))
     assert r.returncode == 1, r.stdout
-    for needle in ("apps/api/config/prod/", "apps/api/env/prod/", "infra/deploy/stg/redis.tf", "identical copy of infra/deploy/base/variables.tf",
+    for needle in ("FAIL  apps/web/.env.example  -- scattered env template",
+                   "FAIL  infra/env/prod/.env.example  -- scattered env template",
+                   "apps/api/config/prod/", "apps/api/env/prod/", "infra/deploy/stg/redis.tf", "identical copy of infra/deploy/base/variables.tf",
                    "infra/env/qa/", "apps/api/migrations/prod/002_hotfix.sql", "FAIL  docker-compose.yml"):
         assert needle in r.stdout, (needle, r.stdout)
 

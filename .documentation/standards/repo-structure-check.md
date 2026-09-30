@@ -41,6 +41,7 @@ overwrite it.
 | `root_files` | `[]` | Globs allowed directly at the repo root |
 | `exceptions` | `[]` | The adoption baseline: known violations allowed until fixed. Only *new* violations block. Exact paths are recommended, since a glob also allows future files; a secrets file can only be allowed by exact path. |
 | `env_roots` | `["infra/env", "infra/deploy"]` | Where environment folders live: `<env_root>/<env name>/` |
+| `env_file` | `<first env_root>/.env.example` with environments, else `.env.example` | The **one** committed env template. Must be named `.env.example`. |
 
 ### `[[folder]]`
 
@@ -93,10 +94,39 @@ rule doesn't fire.
 | FAIL | A tracked file under no manifest folder, or a root file not in `root_files` |
 | FAIL | A file that doesn't match its folder's `holds` |
 | FAIL | A new file in a `deprecated` folder |
-| FAIL | A tracked secrets file: `.env`, `.env.<x>`, `<x>.env`. `*.example`, `.sample`, `.template` and `.dist` pass. **Only an exact-path `exceptions` entry allows one** (for a committed test fixture such as a vendored `.env.testing`); no glob ever does, and bootstrap never adds one. |
+| FAIL | A tracked secrets file: `.env`, `.env.<x>`, `<x>.env`. Templates (`*.example`, `.sample`, `.template`, `.dist`, `example.env`) are covered by the env-file rules below, not this one. **Only an exact-path `exceptions` entry allows one** (for a committed test fixture such as a vendored `.env.testing`); no glob ever does, and bootstrap never adds one. |
 | WARN | Lifecycle status out of date (see above) |
 | WARN | An `exceptions` entry that no longer allows anything (remove it; the baseline shrinks) |
 | WARN | A `[[repo]]` whose `path` isn't a git checkout |
+
+### Env files: as close to a single `.env` as possible (every mode)
+
+One committed template and one real file:
+
+- **`env_file` (default `infra/env/.env.example`)** lists every key, with placeholder
+  values, for every environment and every app.
+- **The real `.env` sits beside it and is gitignored.** It's the local dev values.
+- **Stg and prod values** come from the secret manager or CI, never from more files in
+  the repo.
+
+The environment is chosen by *which values get loaded*, not by more files.
+
+| Level | Rule |
+|---|---|
+| FAIL | Any other env template anywhere, whether per-app (`apps/web/.env.example`), per-environment (`infra/env/prod/.env.example`, `.env.prod.example`) or in another format (`env.sample`, `example.env`): "scattered env template, merge its keys into `env_file`" |
+| FAIL | A template next to `env_file` with a different name (`.env.sample`): rename it |
+| FAIL | A real env file in the working tree that git would commit (untracked and **not ignored**). This fires *before* it is staged. Fix: `.env` and `.env.*` (with `!.env.example`) in `.gitignore`. |
+| WARN | A local (ignored) env file anywhere other than beside `env_file`: merge its values into the one real `.env` |
+
+An app that expects its own `.env` (Next.js, Laravel, …) loads the shared file with
+`--env-file` or dotenv, or through a symlink. Vendored third-party code with its own
+templates stays as exact-path `exceptions`. The declared `env_file` never needs its own
+folder or `root_files` entry.
+
+`--detect` lists every template and real env file it finds. `--bootstrap` keeps an
+existing single `.env.example` where it is, since the existing structure wins. With
+several templates it keeps the layout's `env_file` and puts the rest in `exceptions`
+as the merge backlog.
 
 ### Environment rules (only when `[[environment]]`s are declared)
 

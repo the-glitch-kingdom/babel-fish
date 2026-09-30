@@ -169,6 +169,9 @@ Opt-in: it runs only when `.claude/structure.toml` exists. This repo has one sin
 - Never widen `holds` to silence an old violation. Put it in `exceptions` so it
   stays visible as backlog. Exact paths only: a glob lets future files through, and
   it can never allow a tracked `.env`.
+- It wants **one** `.env.example` (`env_file`) and one gitignored `.env` beside it.
+  A "real env file is not gitignored" FAIL can fire on an *untracked* `.env`: that's
+  the point, since `git add -A` would have committed it.
 
 Full symptom table: [`.documentation/troubleshooting/structure-check-failures.md`](../../.documentation/troubleshooting/structure-check-failures.md)
 
@@ -180,7 +183,7 @@ Full symptom table: [`.documentation/troubleshooting/structure-check-failures.md
 
 | Command | What It Does |
 |---------|-------------|
-| `npm test` | Run all five project-map suites — generate (16), mine-sessions (13), grader (10), context-check (19), structure-check (70). Stops at the first suite that fails, so a low count means an early exit, not a small suite |
+| `npm test` | Run all five project-map suites — generate (16), mine-sessions (13), grader (10), context-check (19), structure-check (79). Stops at the first suite that fails, so a low count means an early exit, not a small suite |
 | `python .claude/project-map/generate.py --force` | Force-regenerate project map |
 | `python .claude/project-map/grader.py` | Grade map quality (0-100%) |
 | `python .claude/project-map/context-check.py` | Budget + pointer check on CLAUDE.md and `.claude/rules/` (what the hook runs) |
