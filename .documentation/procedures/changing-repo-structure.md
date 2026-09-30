@@ -39,8 +39,10 @@ these same steps and asks only what it can't infer.
    - Keep what already exists; the existing structure wins.
 4. **Run the check.** For each FAIL on an existing file, either widen `holds` (the
    manifest was wrong) or add the path to `exceptions` (the file is wrong). The
-   `exceptions` list is your cleanup backlog. A tracked `.env` can't be excepted;
-   `git rm --cached` it.
+   `exceptions` list is your cleanup backlog. Use exact paths, since a glob also lets
+   future files through. A tracked `.env`: `git rm --cached` it. Only a committed
+   test fixture with no real secrets (e.g. a vendored `.env.testing`) belongs in
+   `exceptions`, by exact path.
 5. **Wire it up:**
    - `git config core.hooksPath` should print `.githooks`. If not, run
      `bash .githooks/install.sh`.

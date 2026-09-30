@@ -1,8 +1,9 @@
 # Layout: monorepo -- several apps and shared packages in one repo, dev (localhost) -> stg -> prod (cloud).
 #
 # A reference, not a rule. `structure-check.py --bootstrap --layout monorepo` copies it,
-# marks each folder active (exists) or planned (not yet), and seeds `exceptions` with
-# whatever in the current tree differs -- adopting it blocks nothing. The
+# marks each folder active (exists) or planned (not yet), adds a folder for anything
+# it doesn't cover, and lists the remaining differences in `exceptions` by exact
+# path -- adopting it blocks nothing. The
 # structure-bootstrap skill reads it to suggest purposes and changes.
 mode = "monorepo"
 root_files = [

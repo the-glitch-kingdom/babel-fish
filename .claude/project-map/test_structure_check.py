@@ -352,10 +352,23 @@ def test_no_environments_declared_skips_env_rules(tmp):
 
 # ── secrets ──────────────────────────────────────────────────────────────────
 
-def test_tracked_env_file_fails_and_cannot_be_excepted(tmp):
-    m = BASE_MANIFEST.replace('root_files', 'exceptions = ["src/.env"]\nroot_files').replace('["**/*.py"]', '["**"]')
+def test_tracked_env_file_fails_and_no_glob_can_except_it(tmp):
+    m = BASE_MANIFEST.replace('root_files', 'exceptions = ["src/*", "**/.env"]\nroot_files').replace('["**/*.py"]', '["**"]')
     r = check(make_repo(tmp, {"README.md": "x", "src/.env": "SECRET=1"}, manifest=m))
     assert r.returncode == 1 and "secrets file is tracked" in r.stdout, r.stdout
+
+
+def test_secret_fixture_can_be_excepted_by_exact_path_only(tmp):
+    """Vendored test configs (.env.testing, .env.ci) are committed on purpose: the escape hatch
+    is an exact path, so a NEW .env next to them still fails."""
+    m = BASE_MANIFEST.replace('root_files', 'exceptions = ["src/.env.testing"]\nroot_files').replace('["**/*.py"]', '["**"]')
+    root = make_repo(tmp, {"README.md": "x", "src/.env.testing": "APP_KEY=test"}, manifest=m)
+    r = check(root)
+    assert r.returncode == 0 and "1 allowed by exceptions" in r.stdout, r.stdout
+    (root / "src/.env").write_text("SECRET=1")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    r = check(root)
+    assert r.returncode == 1 and "FAIL  src/.env " in r.stdout and "src/.env.testing" not in r.stdout, r.stdout
 
 
 def test_secret_variants_fail_examples_pass(tmp):
@@ -461,9 +474,18 @@ def test_bootstrap_mode_override_and_commented_suggestions(tmp):
     assert '# name = "dev"' in text and '# target = "local"' in text, text   # seen env, commented
 
 
-def test_bootstrap_warns_about_tracked_secrets(tmp):
-    r = check(make_repo(tmp / "r", {"README.md": "x", "src/.env": "S=1"}, manifest=None), "--bootstrap")
-    assert r.returncode == 0 and "FAIL  src/.env" in r.stdout, r.stdout
+def test_bootstrap_warns_about_tracked_secrets_and_never_baselines_them(tmp):
+    """A root .env is ALSO an unlisted root file; baselining that exact path would silence the
+    secrets FAIL too (found adopting a real repo). Bootstrap must leave secrets failing."""
+    root = make_repo(tmp / "r", {"README.md": "x", ".env": "S=1", "src/.env": "S=1", "notes.txt": "x"},
+                     manifest=None)
+    r = check(root, "--bootstrap", "--layout", "single")
+    assert r.returncode == 0 and "FAIL  .env " in r.stdout and "FAIL  src/.env " in r.stdout, r.stdout
+    text = (root / ".claude/structure.toml").read_text()
+    assert '"notes.txt"' in text and '".env"' not in text, text
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    r = check(root)
+    assert r.returncode == 1 and "FAIL  .env " in r.stdout and "FAIL  src/.env " in r.stdout, r.stdout
 
 
 def test_bootstrap_unknown_layout_exits_2(tmp):
@@ -488,7 +510,7 @@ def test_every_shipped_layout_is_a_valid_manifest(tmp):
 
 def test_bootstrap_from_layout_adopts_an_existing_repo(tmp):
     tree = {"README.md": "x", "src/a.py": "x", "infra/env/dev/.env.example": "a",
-            "legacy/old.py": "x", "notes.txt": "x"}
+            "legacy/old.py": "x", "notes.txt": "x", "infra/compose/notes.txt": "x"}
     root = make_repo(tmp / "r", tree, manifest=None)
     r = check(root, "--bootstrap", "--layout", "single")
     assert r.returncode == 0 and "layout: single" in r.stdout, r.stdout
@@ -496,16 +518,19 @@ def test_bootstrap_from_layout_adopts_an_existing_repo(tmp):
     # folders that exist are active, the rest planned
     assert 'path = "src"\npurpose = "Application source"\nstatus = "active"' in text, text
     assert 'path = "migrations"' in text and 'status = "planned"' in text, text
-    # what differs from the layout becomes the baseline, not a block
-    assert '"legacy/**"' in text and '"notes.txt"' in text, text
+    # the existing structure wins: an unknown top-level folder becomes its own entry...
+    assert 'path = "legacy"\npurpose = "TODO: what belongs here (not in the single layout)"' in text, text
+    # ...and the baseline is exact paths, never a glob that would allow future files
+    assert 'exceptions = ["infra/compose/notes.txt", "notes.txt"]' in text, text
     subprocess.run(["git", "add", "-A"], cwd=root, check=True)
     r = check(root)
     assert r.returncode == 0 and "allowed by exceptions" in r.stdout, r.stdout
-    # ...and a NEW violation still blocks
+    # ...and a NEW violation still blocks, including next to a baselined one
     (root / "stray.txt").write_text("x")
+    (root / "infra/compose/todo.txt").write_text("x")
     subprocess.run(["git", "add", "-A"], cwd=root, check=True)
     r = check(root, "--staged")
-    assert r.returncode == 1 and "stray.txt" in r.stdout, r.stdout
+    assert r.returncode == 1 and "FAIL  stray.txt" in r.stdout and "FAIL  infra/compose/todo.txt" in r.stdout, r.stdout
 
 
 def test_bootstrap_from_layout_on_a_new_repo_plans_everything(tmp):
@@ -554,6 +579,72 @@ def test_install_copies_the_check_and_never_touches_the_manifest(tmp):
     assert hook.count("# ── Structure Check") == 1, "re-running the installer duplicated the block"
 
 
+def test_installer_checksum_matches_install_sh():
+    """The curl installer verifies this hash first; editing install.sh without it breaks installs (runbook)."""
+    import hashlib
+    want = json.loads((REPO / "checksums.json").read_text())["install_sh"]
+    assert hashlib.sha256((REPO / ".claude/install.sh").read_bytes()).hexdigest() == want, \
+        "regenerate checksums.json: sha256sum .claude/install.sh"
+
+
+def test_installer_upgrades_a_hook_from_before_the_structure_check(tmp):
+    root = make_repo(tmp / "p", {"README.md": "x"}, manifest=None, commit=False)
+    current = (REPO / ".githooks/pre-commit").read_text()
+    old = current[:current.index("# ── Structure Check")].rstrip() + "\n"   # a 2.5.0-era hook
+    assert "Context Check" in old and "Structure Check" not in old
+    (root / ".githooks").mkdir()
+    (root / ".githooks/pre-commit").write_text(old)
+    r = subprocess.run(["bash", str(REPO / ".claude/install.sh"), str(root)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    hook = (root / ".githooks/pre-commit").read_text()
+    assert hook.count("# ── Structure Check") == 1 and hook.count("# ── Context Check") == 1, hook
+
+
+def test_submodules_are_paths_like_any_other(tmp):
+    lib = make_repo(tmp / "lib", {"x.py": "x"}, manifest=None)
+    root = make_repo(tmp / "r", {"README.md": "x"}, manifest=None)
+    subprocess.run(GIT + ["-c", "protocol.file.allow=always", "submodule", "-q", "add", str(lib), "libs/vendor"],
+                   cwd=root, check=True, capture_output=True)
+    d = detect(root)
+    assert d["submodules"] and any(".gitmodules" in r for r in d["reasons"]), d
+    (root / ".claude").mkdir()
+    (root / ".claude/structure.toml").write_text('root_files = ["README.md", ".gitmodules"]\n\n[[folder]]\npath = "libs"\n')
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    r = check(root)
+    assert r.returncode == 0, r.stdout   # the gitlink is one path under libs/; its contents aren't ours
+    (root / ".claude/structure.toml").write_text('root_files = ["README.md", ".gitmodules"]\n')
+    r = check(root)
+    assert r.returncode == 1 and "FAIL  libs/vendor " in r.stdout, r.stdout
+
+
+def test_moving_a_file_into_a_deprecated_folder_counts_as_new(tmp):
+    make_repo(tmp, {"README.md": "x", "src/a.py": "x", "legacy/old.py": "y"},
+              manifest=DEPRECATED.replace('["**/*.py"]', '["**"]'))
+    subprocess.run(["git", "checkout", "-qb", "feature"], cwd=tmp, check=True)
+    subprocess.run(["git", "mv", "src/a.py", "legacy/a.py"], cwd=tmp, check=True)
+    subprocess.run(GIT + ["commit", "-qm", "move"], cwd=tmp, check=True)
+    r = check(tmp, "--since", "main")
+    assert r.returncode == 1 and "legacy/a.py" in r.stdout and "legacy/old.py" not in r.stdout, r.stdout
+
+
+def test_since_on_a_shallow_clone_explains_fetch_depth(tmp):
+    origin = make_repo(tmp / "origin", {"README.md": "x", "src/a.py": "x"})
+    subprocess.run(["git", "checkout", "-qb", "feature"], cwd=origin, check=True)
+    for i in range(3):
+        (origin / f"src/f{i}.py").write_text(str(i))
+        subprocess.run(["git", "add", "-A"], cwd=origin, check=True)
+        subprocess.run(GIT + ["commit", "-qm", f"c{i}"], cwd=origin, check=True)
+    subprocess.run(["git", "checkout", "-q", "main"], cwd=origin, check=True)
+    (origin / "src/m.py").write_text("main moved on")
+    subprocess.run(["git", "add", "-A"], cwd=origin, check=True)
+    subprocess.run(GIT + ["commit", "-qm", "main"], cwd=origin, check=True)
+    ci = tmp / "ci"
+    subprocess.run(["git", "clone", "-q", "--depth", "1", "--branch", "feature", f"file://{origin}", str(ci)], check=True)
+    subprocess.run(["git", "fetch", "-q", "--depth", "1", "origin", "main:refs/remotes/origin/main"], cwd=ci, check=True)
+    r = check(ci, "--since", "origin/main")
+    assert r.returncode == 2 and "fetch-depth: 0" in r.stdout, r.stdout
+
+
 def test_hook_blocks_a_misplaced_file_only_once_there_is_a_manifest(tmp):
     root = make_repo(tmp / "p", {"README.md": "x"}, manifest=None)
     (root / ".githooks").mkdir()
@@ -581,6 +672,60 @@ def test_hook_blocks_a_misplaced_file_only_once_there_is_a_manifest(tmp):
     assert r.returncode != 0, "hook let a file under no manifest folder through"
     out = r.stdout + r.stderr  # git hands a hook's stdout to stderr
     assert "[structure-check] Commit blocked" in out and "FAIL  tools/x.sh" in out, out
+
+
+REALISTIC_MONOREPO = {
+    "README.md": "x", "package.json": '{"workspaces": ["apps/*", "packages/*"]}', "pnpm-workspace.yaml": "p",
+    "apps/api/package.json": '{"name": "api"}', "apps/api/src/index.ts": "api",
+    "apps/api/migrations/001_init.sql": "create", "apps/api/src/seed/dev-users.ts": "seed code",
+    "apps/web/package.json": '{"name": "web"}', "apps/web/src/pages/index.tsx": "web",
+    "apps/web/src/features/prod-banner.tsx": "a component that merely mentions prod",
+    "apps/web/config/environments/production.rb": "rails-style per-env FILE, not a folder",
+    "packages/ui/package.json": '{"name": "ui"}', "packages/ui/src/button.tsx": "btn",
+    "infra/compose/base.yml": "services: {api: {}}", "infra/compose/dev.yml": "dev override",
+    "infra/compose/remote.yml": "remote override",
+    "infra/env/dev/.env.example": "API_URL=http://localhost", "infra/env/stg/.env.example": "API_URL=https://stg",
+    "infra/env/prod/.env.example": "API_URL=https://prod", "infra/env/README.md": "how env config works",
+    "infra/deploy/base/main.tf": "module", "infra/deploy/base/variables.tf": "vars",
+    "infra/deploy/stg/main.tf": 'module "app" { source = "../base" }',
+    "infra/deploy/prod/main.tf": 'module "app" { source = "../base" }',  # identical ACROSS envs is fine
+    "infra/deploy/stg/terraform.tfvars": "size = small", "infra/deploy/prod/terraform.tfvars": "size = large",
+    "k8s/base/deployment.yaml": "deploy", "k8s/base/kustomization.yaml": "base",
+    "k8s/overlays/stg/kustomization.yaml": "stg patch", "k8s/overlays/prod/kustomization.yaml": "prod patch",
+    ".github/workflows/deploy.yml": "on: workflow_dispatch\njobs:\n  d:\n    environment: ${{ inputs.env }}\n",
+    ".github/workflows/ci.yml": "ci",
+}
+
+
+def test_realistic_monorepo_with_environments_passes_clean(tmp):
+    """False-positive guard: common, correct patterns must pass untouched."""
+    m = (REPO / ".claude/templates/structure/monorepo.toml").read_text()
+    m = m.replace('mode = "monorepo"', 'mode = "monorepo"\nenv_roots = ["infra/env", "infra/deploy", "k8s/overlays"]')
+    m += '\n[[folder]]\npath = "k8s"\npurpose = "Kustomize base + per-env overlays"\n'
+    r = check(make_repo(tmp / "r", REALISTIC_MONOREPO, manifest=m))
+    assert r.returncode == 0 and "FAIL" not in r.stdout, r.stdout
+    d = detect(tmp / "r")
+    assert d["mode"] == "monorepo" and set(d["environments"]) >= {"dev", "stg", "prod"}, d
+
+
+def test_realistic_monorepo_catches_the_classic_drift(tmp):
+    m = (REPO / ".claude/templates/structure/monorepo.toml").read_text()
+    m = m.replace('mode = "monorepo"', 'mode = "monorepo"\nenv_roots = ["infra/env", "infra/deploy", "k8s/overlays"]')
+    m += '\n[[folder]]\npath = "k8s"\npurpose = "Kustomize base + per-env overlays"\n'
+    drift = {
+        "apps/api/config/prod/.env.example": "per-app env config",        # per-app config/<env>/
+        "apps/api/env/prod/.env.example": "per-app env folder",            # per-app env folder
+        "infra/deploy/prod/redis.tf": "redis only in prod",                 # stg no longer mirrors prod
+        "infra/deploy/prod/variables.tf": "vars",                           # copy of base/variables.tf
+        "infra/env/qa/.env.example": "QA=1",                                # undeclared environment
+        "apps/api/migrations/prod/002_hotfix.sql": "prod-only migration",   # per-env migration
+        "docker-compose.yml": "compose at the root",                        # compose outside infra/compose
+    }
+    r = check(make_repo(tmp / "r", {**REALISTIC_MONOREPO, **drift}, manifest=m))
+    assert r.returncode == 1, r.stdout
+    for needle in ("apps/api/config/prod/", "apps/api/env/prod/", "infra/deploy/stg/redis.tf", "identical copy of infra/deploy/base/variables.tf",
+                   "infra/env/qa/", "apps/api/migrations/prod/002_hotfix.sql", "FAIL  docker-compose.yml"):
+        assert needle in r.stdout, (needle, r.stdout)
 
 
 def test_old_python_warns_and_skips(tmp):

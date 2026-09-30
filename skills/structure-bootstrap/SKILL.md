@@ -64,8 +64,10 @@ Then pick the flow:
    ```bash
    python .claude/project-map/structure-check.py --bootstrap --layout <mode>
    ```
-   Use plain `--bootstrap` (no layout) when the repo is far from every layout. It
-   declares one folder per top-level directory instead.
+   Top-level folders the layout doesn't cover become their own `[[folder]]` entries
+   ("TODO … (not in the <mode> layout)"). Leftover violations seed `exceptions` as
+   exact paths. Use plain `--bootstrap` (no layout) when the repo is far from every
+   layout.
 3. Refine `.claude/structure.toml` from what is actually there:
    - **purpose:** one line per folder, from its README or a few of its files. Never
      leave a `TODO`.
@@ -85,9 +87,11 @@ Then pick the flow:
    ```
    For each FAIL on a file that already exists, either widen `holds` (the manifest
    was wrong) or add the path to `exceptions` (the file is in the wrong place). Tell
-   the user which ones you put in `exceptions`: that list is the cleanup backlog. A
-   tracked secret (`.env`) can't be listed in `exceptions`. Tell the user to
-   `git rm --cached` it.
+   the user which ones you put in `exceptions`: that list is the cleanup backlog.
+   Always use exact paths, never globs (a glob lets future files through). A tracked
+   secret (`.env`): tell the user, and have them `git rm --cached` it. Add its exact
+   path to `exceptions` only if the user confirms it's a committed test fixture with
+   no real secrets (e.g. a vendored `.env.testing`). Never decide that yourself.
 5. List what differs from the layout as suggestions, not changes. For example:
    "secrets config lives in `apps/api/config/prod.env`; the layout puts it in
    `infra/env/prod/`".

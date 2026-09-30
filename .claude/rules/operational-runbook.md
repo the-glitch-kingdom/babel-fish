@@ -167,7 +167,8 @@ Opt-in: it runs only when `.claude/structure.toml` exists. This repo has one sin
 - It checks the repo it is **installed in**, not the current directory. Running
   another repo's copy without `--project-root` reads and writes the wrong repo.
 - Never widen `holds` to silence an old violation. Put it in `exceptions` so it
-  stays visible as backlog. A tracked `.env` can't be excepted at all.
+  stays visible as backlog. Exact paths only: a glob lets future files through, and
+  it can never allow a tracked `.env`.
 
 Full symptom table: [`.documentation/troubleshooting/structure-check-failures.md`](../../.documentation/troubleshooting/structure-check-failures.md)
 

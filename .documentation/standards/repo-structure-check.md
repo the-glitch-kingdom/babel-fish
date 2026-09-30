@@ -39,7 +39,7 @@ overwrite it.
 |---|---|---|
 | `mode` | `single` | `single` (flat), `monorepo` (`apps/<name>/`, `packages/<name>/`), or `multi-repo` (one of several repos; see `[[repo]]`) |
 | `root_files` | `[]` | Globs allowed directly at the repo root |
-| `exceptions` | `[]` | The adoption baseline: globs of known violations allowed until fixed. Only *new* violations block. |
+| `exceptions` | `[]` | The adoption baseline: known violations allowed until fixed. Only *new* violations block. Exact paths are recommended, since a glob also allows future files; a secrets file can only be allowed by exact path. |
 | `env_roots` | `["infra/env", "infra/deploy"]` | Where environment folders live: `<env_root>/<env name>/` |
 
 ### `[[folder]]`
@@ -93,7 +93,7 @@ rule doesn't fire.
 | FAIL | A tracked file under no manifest folder, or a root file not in `root_files` |
 | FAIL | A file that doesn't match its folder's `holds` |
 | FAIL | A new file in a `deprecated` folder |
-| FAIL | A tracked secrets file: `.env`, `.env.<x>`, `<x>.env`. `*.example`, `.sample`, `.template` and `.dist` pass. **`exceptions` can't allow this.** |
+| FAIL | A tracked secrets file: `.env`, `.env.<x>`, `<x>.env`. `*.example`, `.sample`, `.template` and `.dist` pass. **Only an exact-path `exceptions` entry allows one** (for a committed test fixture such as a vendored `.env.testing`); no glob ever does, and bootstrap never adds one. |
 | WARN | Lifecycle status out of date (see above) |
 | WARN | An `exceptions` entry that no longer allows anything (remove it; the baseline shrinks) |
 | WARN | A `[[repo]]` whose `path` isn't a git checkout |
@@ -108,7 +108,7 @@ rule doesn't fire.
 | FAIL | Deploy config (Terraform, Kustomize, Helm, Fly, Render, Vercel, Railway) in a local environment | Local environments don't deploy |
 | FAIL | An environment file byte-identical to a shared file (git blob hash; empty files excluded) | Environment folders hold deltas only |
 | FAIL | A per-environment migrations folder, inside or outside the env roots | The schema has one path forward through every environment |
-| FAIL | `<env\|envs\|environments\|overlays>/<declared env>/` outside `env_roots` | In a monorepo, app environment config goes in the shared env root |
+| FAIL | `<env\|envs\|environments\|overlays\|config>/<declared env>/` outside `env_roots` | In a monorepo, app environment config goes in the shared env root |
 | WARN | Workflow copies that differ only by environment (`deploy-stg.yml` + `deploy-prod.yml`) | Prefer one workflow that takes the environment as input |
 
 The local-only and deploy lists are constants at the top of the script
@@ -158,8 +158,17 @@ a folder's purpose, which layout fits, or whether siblings are related, belong t
   - Folders that exist become `active`, the rest `planned`.
   - Each layout declares dev (local) → stg → prod (cloud), with stg mirroring prod.
 
-Either way, today's violations seed `exceptions`, so adopting the check blocks
-nothing. Environments seen and sibling repos are added as commented-out suggestions.
+Either way, the existing structure wins, and adopting the check blocks nothing:
+
+- A top-level folder the layout doesn't cover becomes its own `[[folder]]` entry
+  (`TODO` purpose), never a `dir/**` exception. A glob would also allow every
+  future file there.
+- Remaining violations seed `exceptions` as **exact paths**, so nothing new slips
+  through them.
+- Tracked secrets are never seeded. They keep failing until they're untracked, or
+  until someone adds an exact path by hand.
+
+Environments seen and sibling repos are added as commented-out suggestions.
 
 The layouts use the manifest's own schema. They are references, not rules: on an
 existing repo, the existing structure wins.

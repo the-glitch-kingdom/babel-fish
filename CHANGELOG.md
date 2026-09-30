@@ -25,13 +25,15 @@ All notable changes to this project will be documented in this file.
   stay out of cloud environments and deploy config stays out of local ones,
   environment folders hold deltas only (an identical copy of a shared file fails),
   migrations are never per-environment, and per-app environment folders outside
-  `env_roots` fail. A tracked `.env` fails in every mode, and `exceptions` can't
-  allow it.
+  `env_roots` fail. A tracked `.env` fails in every mode. Only an exact-path
+  exception, added by hand for a committed test fixture, can allow one.
 
   **Detection and adoption.** `--detect [--json]` reports facts: best-guess mode with
   reasons, environments seen, top-level folders, sibling repos, and whether the repo is
-  new. `--bootstrap [--layout single|monorepo|multi-repo]` writes a starting manifest,
-  seeds `exceptions` from today's tree, and never overwrites an existing manifest. With
+  new. `--bootstrap [--layout single|monorepo|multi-repo]` writes a starting manifest
+  and never overwrites an existing one. Uncovered top-level folders become their own
+  entries, leftover violations seed `exceptions` as exact paths, and tracked secrets
+  are never seeded. With
   no manifest, running the script explains the options and exits 0. Flags for commit
   and CI: `--staged` and `--since REF`.
 

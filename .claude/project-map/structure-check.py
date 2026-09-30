@@ -50,7 +50,7 @@ TARGETS = ("local", "cloud")
 # what every environment shares (base + overlay).
 DEFAULT_ENV_ROOTS = ["infra/env", "infra/deploy"]
 SHARED_ENV_DIRS = {"base", "shared", "common", "modules"}
-ENV_PARENT_DIRS = {"env", "envs", "environments", "overlays"}  # <parent>/<env>/ outside env_roots
+ENV_PARENT_DIRS = {"env", "envs", "environments", "overlays", "config"}  # <parent>/<env>/ outside env_roots
 MIGRATION_DIRS = {"migrations", "migration", "alembic"}
 SECRET_OK_SUFFIXES = (".example", ".sample", ".template", ".dist")  # .env.example, .env.prod.example ...
 # ponytail: fixed lists — extend here when a real repo needs another platform
@@ -200,7 +200,11 @@ def added(staged: bool, since: str | None) -> set[str]:
     if staged:
         out = git("diff", "--cached", "--name-only", "--no-renames", "--diff-filter=A", "-z")
     elif since:
-        out = git("diff", "--name-only", "--no-renames", "--diff-filter=A", "-z", f"{since}...HEAD")
+        try:
+            out = git("diff", "--name-only", "--no-renames", "--diff-filter=A", "-z", f"{since}...HEAD")
+        except RuntimeError as e:
+            raise RuntimeError(f"{e} -- --since needs {since} and its merge base with HEAD; in CI fetch full "
+                               "history (actions/checkout with fetch-depth: 0)") from None
     else:
         return set()
     return {p for p in out.split("\0") if p}
@@ -260,7 +264,9 @@ def check_secrets(files: dict[str, str]) -> list[Finding]:
         if name.endswith(SECRET_OK_SUFFIXES) or not (name == ".env" or name.startswith(".env.") or name.endswith(".env")):
             continue
         out.append(Finding("FAIL", path, "secrets file is tracked -- git rm --cached it, keep values in "
-                           "the environment or a secret manager, commit only .env.example", exemptable=False))
+                           "the environment or a secret manager, commit only .env.example (a committed "
+                           "test fixture with no real secrets: list its exact path in exceptions)",
+                           exemptable=False))
     return out
 
 
@@ -359,7 +365,11 @@ def apply_exceptions(findings: list[Finding], exceptions: list[str]) -> tuple[li
     """Drop FAILs the baseline allows; WARN on baseline entries that allow nothing anymore."""
     kept, hit, baselined = [], set(), 0
     for f in findings:
-        pats = [e for e in exceptions if f.level == "FAIL" and f.exemptable and glob_re(e).match(f.path)]
+        if f.level != "FAIL":
+            kept.append(f)
+            continue
+        # A secrets FAIL yields only to its exact path: a glob must never wave through a new .env.
+        pats = [e for e in exceptions if (glob_re(e).match(f.path) if f.exemptable else e == f.path)]
         if pats:
             hit.update(pats)
             baselined += 1
@@ -567,7 +577,7 @@ def bootstrap(layout: str | None, mode: str | None) -> int:
             print(f"FAIL  no layout {layout!r} -- available: {', '.join(d['layouts']) or '(none installed)'}")
             return 2
         if tomllib is None:
-            warn_old_python()
+            warn_old_python(f"the {layout} layout")
             return 0
         m = load_manifest(src)
     else:
@@ -575,24 +585,27 @@ def bootstrap(layout: str | None, mode: str | None) -> int:
     if mode:
         m["mode"] = mode
 
-    present = {t["path"] for t in d["top_level"]}
     files, on_disk = tracked(), all_files()
     for f in m.get("folder", []):  # a layout's folders: active if they exist, planned if not
         exists = any(p.startswith(f["path"] + "/") for p in on_disk)
         f["status"] = "active" if exists else "planned"
         f.setdefault("added", today)
-    if not layout:
-        for top in sorted(present):
-            m["folder"].append({"path": top, "purpose": "TODO: what belongs here",
-                                "status": "active", "added": today})
+    # The existing structure wins: a top-level folder nothing covers becomes its own entry. Never a
+    # `dir/**` exception -- a glob would wave through every FUTURE file in it too.
+    folders = sorted(m.get("folder", []), key=lambda f: -f["path"].count("/") - len(f["path"]))
+    uncovered = sorted({p.split("/", 1)[0] for p in on_disk if "/" in p and owner(p, folders) is None})
+    for top in uncovered:
+        purpose = "TODO: what belongs here" + (f" (not in the {layout} layout)" if layout else "")
+        m.setdefault("folder", []).append({"path": top, "purpose": purpose, "status": "active", "added": today})
 
     # Seed the baseline: whatever fails today is allowed until fixed; only NEW violations block.
     findings = check_folders(m, files, set()) + check_environments(m, files)
+    secrets = check_secrets(files)
+    never = {f.path for f in secrets}  # an exact-path exception would also silence the secrets FAIL
     exc = set()
     for f in findings:
-        if f.level == "FAIL" and f.exemptable:
-            unmapped = "under no manifest folder" in f.msg
-            exc.add(f.path.split("/", 1)[0] + "/**" if unmapped and "/" in f.path else f.path)
+        if f.level == "FAIL" and f.exemptable and f.path not in never:
+            exc.add(f.path)  # exact paths only: the baseline must not allow anything new
     if exc:
         m["exceptions"] = sorted(exc)
 
@@ -612,18 +625,18 @@ def bootstrap(layout: str | None, mode: str | None) -> int:
     print(f"Wrote {MANIFEST.relative_to(PROJECT_ROOT)} (mode: {m['mode']}"
           + (f", layout: {layout}" if layout else "") + ")")
     print(f"  {len(m.get('folder', []))} folders, {len(exc)} exception(s) seeded from today's tree")
-    secrets = check_secrets(files)
     for f in secrets:
-        print(f"  FAIL  {f.path}  -- tracked secrets file; the check will fail until it is untracked")
+        print(f"  FAIL  {f.path}  -- tracked secrets file; the check fails until it is untracked "
+              "(or, if it holds no real secrets, its exact path is added to exceptions by hand)")
     print("Next: fill in each TODO purpose, tighten holds, run structure-check.py, commit the manifest.")
     return 0
 
 
 # ── cli ──────────────────────────────────────────────────────────────────────
 
-def warn_old_python() -> None:
+def warn_old_python(what: str = ".claude/structure.toml") -> None:
     v = ".".join(map(str, sys.version_info[:3]))
-    print(f"WARN  structure-check skipped: it reads .claude/structure.toml with Python's built-in\n"
+    print(f"WARN  structure-check skipped: it reads {what} with Python's built-in\n"
           f"      TOML parser (tomllib), which needs Python 3.11+. This is Python {v}.\n"
           f"      Nothing was checked. Upgrade to Python 3.11 or newer to turn the check on;\n"
           f"      CI running 3.11+ still enforces it.")

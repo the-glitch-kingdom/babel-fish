@@ -28,7 +28,7 @@ itself failing, and results that look wrong. The rules are in the
 | `root file not in root_files` | A new file at the repo root | Add it to `root_files`, or move it into a folder |
 | `doesn't match … holds` | The folder doesn't take this kind of file | Put it where that kind of file lives, or widen `holds` |
 | `new file in deprecated folder` | The folder is being retired | Put it where the folder's replacement lives |
-| `secrets file is tracked` | A real `.env` (or `.env.prod`, `prod.env`) is in the index | `git rm --cached <file>`, keep the values out of git, and commit `.env.example`. `exceptions` can't allow it. |
+| `secrets file is tracked` | A real `.env` (or `.env.prod`, `prod.env`) is in the index | `git rm --cached <file>`, keep the values out of git, and commit `.env.example`. If it's a committed test fixture with no real secrets (a vendored `.env.testing` or `.env.ci`), list its **exact path** in `exceptions`. A glob never allows a secrets file. |
 | `environment 'x' is not declared` | `<env_root>/x/` exists with no `[[environment]]` | Declare it, or fold its files into a declared environment |
 | `missing: stg mirrors prod` | A file exists in one environment and not the other | Add it to both, or remove it from both |
 | `local-only file in cloud environment` / `deploy config in local environment` | Seeds, certs or Compose under stg/prod, or Terraform/k8s under dev | Move it to the right environment |
