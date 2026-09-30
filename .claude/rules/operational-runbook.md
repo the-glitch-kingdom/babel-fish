@@ -180,7 +180,7 @@ Full symptom table: [`.documentation/troubleshooting/structure-check-failures.md
 
 | Command | What It Does |
 |---------|-------------|
-| `npm test` | Run all five project-map suites — generate (16), mine-sessions (13), grader (10), context-check (19), structure-check (62). Stops at the first suite that fails, so a low count means an early exit, not a small suite |
+| `npm test` | Run all five project-map suites — generate (16), mine-sessions (13), grader (10), context-check (19), structure-check (70). Stops at the first suite that fails, so a low count means an early exit, not a small suite |
 | `python .claude/project-map/generate.py --force` | Force-regenerate project map |
 | `python .claude/project-map/grader.py` | Grade map quality (0-100%) |
 | `python .claude/project-map/context-check.py` | Budget + pointer check on CLAUDE.md and `.claude/rules/` (what the hook runs) |

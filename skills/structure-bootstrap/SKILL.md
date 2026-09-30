@@ -34,10 +34,17 @@ for, which layout fits, what to ask.
 If `.claude/project-map/structure-check.py` is missing, the repo hasn't run the full
 installer: `npx @theglitchking/babel-fish init`.
 
+Commands below use `python3`. Many machines have no `python`. Reading a manifest
+needs 3.11+; on older versions the check warns and passes, which proves nothing.
+
+**`holds` globs** are relative to the folder's `path`. `*` and `?` stop at `/`; `**`
+crosses it; `**/` may match zero directories, so `**/*.py` also matches direct
+children. Name extensionless files literally (`"pre-commit"`, `"Makefile"`).
+
 ## Step 0: facts
 
 ```bash
-python .claude/project-map/structure-check.py --detect --json
+python3 .claude/project-map/structure-check.py --detect --json
 ```
 
 Returns `mode` + `reasons`, `environments` (name → evidence paths), `top_level`
@@ -62,17 +69,26 @@ Then pick the flow:
    `.gitmodules` in a monorepo still means `[[repo]]` pointers.
 2. Get a baseline that blocks nothing:
    ```bash
-   python .claude/project-map/structure-check.py --bootstrap --layout <mode>
+   python3 .claude/project-map/structure-check.py --bootstrap --layout <mode>
    ```
    Top-level folders the layout doesn't cover become their own `[[folder]]` entries
    ("TODO … (not in the <mode> layout)"). Leftover violations seed `exceptions` as
-   exact paths. Use plain `--bootstrap` (no layout) when the repo is far from every
-   layout.
+   exact paths. If most of the `top_level` folders from Step 0 aren't in the layout,
+   use plain `--bootstrap` instead. It declares exactly what exists, with nothing to
+   prune.
 3. Refine `.claude/structure.toml` from what is actually there:
-   - **purpose:** one line per folder, from its README or a few of its files. Never
-     leave a `TODO`.
-   - **holds:** tight enough to catch drift, loose enough not to nag. Base it on the
-     extensions `--detect` reported, e.g. `["**/*.py"]` for a Python package, or
+   - **Prune what the layout brought:**
+     - `planned` folders this repo won't have, e.g. a top-level `migrations` when
+       migrations already live in `db/`
+     - the layout's dev/stg/prod `[[environment]]` blocks if Step 0 found no
+       environments. Ask first if the user may be planning them.
+   - **purpose:** one line per folder, from its README or a few of its files. Check
+     the purposes the layout supplied too, not just the `TODO`s; they're generic
+     and can be wrong for this repo.
+   - **holds:** tight enough to catch drift, loose enough not to nag. Survey the
+     real contents (`git ls-files <folder> | sed 's/.*\.//' | sort | uniq -c`).
+     `--detect` lists only the top few extensions per folder, and holds built from
+     that alone will FAIL on the rest. E.g. `["**/*.py"]` for a Python package,
      `["*/.env.example"]` for `infra/env`. Leave `holds` out for folders that
      legitimately hold anything.
    - **environments:** from `environments` in the facts. Targets: `dev` / `local` →
@@ -83,9 +99,12 @@ Then pick the flow:
    - **root_files:** keep what's there; globs for families (`*.lock`, `tsconfig*.json`).
 4. Run the check:
    ```bash
-   python .claude/project-map/structure-check.py
+   python3 .claude/project-map/structure-check.py
    ```
-   For each FAIL on a file that already exists, either widen `holds` (the manifest
+   Straight after bootstrap it's usually green. Tightening `holds` is what surfaces
+   FAILs. Also review the `exceptions` bootstrap added: a file that legitimately
+   belongs at the root (`.env.example`, `.gitleaks.toml`) goes in `root_files`, not
+   the backlog. For each FAIL on a file that already exists, either widen `holds` (the manifest
    was wrong) or add the path to `exceptions` (the file is in the wrong place). Tell
    the user which ones you put in `exceptions`: that list is the cleanup backlog.
    Always use exact paths, never globs (a glob lets future files through). A tracked
@@ -97,7 +116,8 @@ Then pick the flow:
    `infra/env/prod/`".
 6. Wiring: `.githooks/pre-commit` should contain a `Structure Check` block (re-run
    `npx @theglitchking/babel-fish init` if not). `git config core.hooksPath` should
-   print `.githooks`. Add CI (below). Commit the manifest.
+   print `.githooks`. If the repo has CI (`.github/workflows/`), offer the CI step
+   (below): the hook can be skipped, CI can't. Commit the manifest.
 
 ## Flow B: new repo
 
@@ -172,5 +192,5 @@ that can't be skipped. It needs Python 3.11+ and the base branch fetched:
   with: { fetch-depth: 0 }
 - uses: actions/setup-python@v5
   with: { python-version: "3.12" }
-- run: python .claude/project-map/structure-check.py --since origin/${{ github.base_ref || 'main' }}
+- run: python3 .claude/project-map/structure-check.py --since origin/${{ github.base_ref || 'main' }}
 ```
