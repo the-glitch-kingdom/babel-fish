@@ -530,6 +530,59 @@ def test_skill_only_names_flags_and_paths_that_exist():
         assert path in skill and (REPO / path).exists(), path
 
 
+# ── hook + installer ─────────────────────────────────────────────────────────
+
+def _block(text: str) -> str:
+    return text[text.index("# ── Structure Check"):text.index("# ── End Structure Check")]
+
+
+def test_installer_writes_the_same_hook_block():
+    assert _block((REPO / ".githooks/pre-commit").read_text()) == _block((REPO / ".claude/install.sh").read_text())
+
+
+def test_install_copies_the_check_and_never_touches_the_manifest(tmp):
+    root = make_repo(tmp / "p", {"README.md": "x"}, manifest='mode = "single"\n# hand-written\n', commit=False)
+    before = (root / ".claude/structure.toml").read_bytes()
+    for _ in range(2):  # re-running (init / update) must be just as safe
+        r = subprocess.run(["bash", str(REPO / ".claude/install.sh"), str(root)], capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    assert (root / ".claude/structure.toml").read_bytes() == before
+    assert (root / ".claude/project-map/structure-check.py").is_file()
+    assert sorted(p.name for p in (root / ".claude/templates/structure").glob("*.toml")) == \
+        ["monorepo.toml", "multi-repo.toml", "single.toml"]
+    hook = (root / ".githooks/pre-commit").read_text()
+    assert hook.count("# ── Structure Check") == 1, "re-running the installer duplicated the block"
+
+
+def test_hook_blocks_a_misplaced_file_only_once_there_is_a_manifest(tmp):
+    root = make_repo(tmp / "p", {"README.md": "x"}, manifest=None)
+    (root / ".githooks").mkdir()
+    shutil.copy(REPO / ".githooks/pre-commit", root / ".githooks/pre-commit")
+    (root / ".githooks/pre-commit").chmod(0o755)
+    (root / ".claude/project-map").mkdir(parents=True)
+    shutil.copy(SCRIPT, root / ".claude/project-map/structure-check.py")
+    git = GIT + ["-c", "core.hooksPath=.githooks"]
+
+    def commit(msg: str) -> subprocess.CompletedProcess:
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+        return subprocess.run(git + ["commit", "-qm", msg], cwd=root, capture_output=True, text=True)
+
+    (root / "stray.txt").write_text("x")
+    assert commit("no manifest: check is off").returncode == 0
+
+    (root / ".claude/structure.toml").write_text(
+        'root_files = ["README.md", "stray.txt"]\n\n[[folder]]\npath = ".githooks"\n\n'
+        '[[folder]]\npath = ".claude"\n')
+    assert commit("manifest").returncode == 0
+
+    (root / "tools").mkdir()
+    (root / "tools/x.sh").write_text("x")
+    r = commit("misplaced")
+    assert r.returncode != 0, "hook let a file under no manifest folder through"
+    out = r.stdout + r.stderr  # git hands a hook's stdout to stderr
+    assert "[structure-check] Commit blocked" in out and "FAIL  tools/x.sh" in out, out
+
+
 def test_old_python_warns_and_skips(tmp):
     """Python < 3.11 has no tomllib: a readable WARN, exit 0, never a block."""
     make_repo(tmp, {"README.md": "x"})

@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.6.0] - 2026-09-30
+
+### Added
+
+- **`structure-check.py`: files land where the repo says they go**
+  ([#22](https://github.com/the-glitch-kingdom/babel-fish/issues/22)). The project map
+  describes where things *are*. The new, opt-in `.claude/structure.toml` says where
+  they *should go*, and the check enforces it at commit time and in CI.
+
+  **Manifest.** Each approved folder declares a `purpose`, optional `holds` globs and
+  a lifecycle status: `planned` (approved, may be created), `active`, or `deprecated`
+  (new files blocked while existing ones move out). The manifest also lists
+  `root_files`, an `exceptions` baseline so adopting the check blocks nothing (only
+  *new* violations fail), and `[[repo]]` pointers for multi-repo setups. Each pointed-to
+  repo runs its own babel-fish; nothing crosses repos. The mode is `single`,
+  `monorepo` or `multi-repo`.
+
+  **Environment lifecycle.** Declared `[[environment]]`s (`target` local or cloud,
+  `promotes_to`, `mirrors`) enforce dev → stg → prod: undeclared environment folders
+  fail, stg must hold the same files as prod, local-only files (Compose, seeds, certs)
+  stay out of cloud environments and deploy config stays out of local ones,
+  environment folders hold deltas only (an identical copy of a shared file fails),
+  migrations are never per-environment, and per-app environment folders outside
+  `env_roots` fail. A tracked `.env` fails in every mode, and `exceptions` can't
+  allow it.
+
+  **Detection and adoption.** `--detect [--json]` reports facts: best-guess mode with
+  reasons, environments seen, top-level folders, sibling repos, and whether the repo is
+  new. `--bootstrap [--layout single|monorepo|multi-repo]` writes a starting manifest,
+  seeds `exceptions` from today's tree, and never overwrites an existing manifest. With
+  no manifest, running the script explains the options and exits 0. Flags for commit
+  and CI: `--staged` and `--since REF`.
+
+  **`structure-bootstrap` skill.** It makes the judgment calls the script can't:
+  folder purposes and `holds` from real contents, which layout fits, planning a new
+  repo from a project description, recipes for adding and retiring folders, apps and
+  environments, and, only on request, for Flow C, or for a new repo, a rules file and
+  a procedure doc.
+
+  The pre-commit hook gets a `Structure Check` block (own marker, so re-running
+  `bash .claude/install.sh` adds it to existing hooks). It runs only when the manifest
+  exists. The installer copies the script and the layouts and never touches
+  `structure.toml`. On Python < 3.11 (no `tomllib`) the check prints a readable warning
+  and passes; the rest of babel-fish still runs on 3.8. When a manifest exists,
+  `PROJECT_MAP.md` gets a one-line pointer to it plus the related repos.
+
 ## [2.5.0] - 2026-09-25
 
 ### Added

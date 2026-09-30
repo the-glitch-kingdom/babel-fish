@@ -38,3 +38,21 @@ if git diff --cached --name-only 2>/dev/null | grep -qE '^(\.claude/)?CLAUDE(\.l
     fi
 fi
 # ── End Context Check ────────────────────────────────────────────────────────
+
+# ── Structure Check: files land where .claude/structure.toml says (#22) ──────
+# Opt-in: runs only once the repo has a manifest. On Python < 3.11 it warns and passes.
+if [ -f ".claude/structure.toml" ]; then
+    CHECK_SCRIPT=".claude/project-map/structure-check.py"
+    if [ -f "$CHECK_SCRIPT" ]; then
+        PYTHON=""
+        if [ -f ".venv/bin/python3" ]; then PYTHON=".venv/bin/python3"
+        elif command -v python3 &>/dev/null; then PYTHON="python3"
+        elif command -v python &>/dev/null; then PYTHON="python"
+        fi
+        if [ -n "$PYTHON" ] && ! $PYTHON "$CHECK_SCRIPT" --staged; then
+            echo "[structure-check] Commit blocked. Each FAIL above has a fix: line -- or change .claude/structure.toml if the structure should change." >&2
+            exit 1
+        fi
+    fi
+fi
+# ── End Structure Check ──────────────────────────────────────────────────────

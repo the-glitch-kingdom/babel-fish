@@ -179,6 +179,19 @@ def test_plugin_repo_map_is_not_empty(g):
     assert "no vocabulary generated yet" not in section, "section 01 still renders the stub"
 
 
+# ── Structure pointer (#22) ──────────────────────────────────────────────────
+
+def test_structure_pointer_only_with_a_manifest(g):
+    assert g.build_structure_pointer() == []
+    (g.PROJECT_ROOT / ".claude").mkdir(exist_ok=True)
+    (g.PROJECT_ROOT / ".claude/structure.toml").write_text(
+        'mode = "multi-repo"\n\n[[repo]]\nname = "api"\npath = "../api"\npurpose = "Backend"\n')
+    text = "\n".join(g.build_structure_pointer())
+    assert "`.claude/structure.toml`" in text, text
+    if sys.version_info >= (3, 11):
+        assert "**api** `../api` — Backend" in text, text
+
+
 # ── Glossary side-channel (#10) ──────────────────────────────────────────────
 
 def test_glossary_json_written_and_shaped(g):

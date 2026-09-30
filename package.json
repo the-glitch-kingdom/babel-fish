@@ -1,6 +1,6 @@
 {
   "name": "@theglitchking/babel-fish",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Gives your AI coding assistant instant, accurate knowledge of every route, model, service, feature, and infrastructure element in your codebase.",
   "type": "module",
   "bin": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "postinstall": "node scripts/link-skills.js",
-    "test": "python3 .claude/project-map/test_generate.py && python3 .claude/project-map/test_mine_sessions.py && python3 .claude/project-map/test_grader.py && python3 .claude/project-map/test_context_check.py"
+    "test": "python3 .claude/project-map/test_generate.py && python3 .claude/project-map/test_mine_sessions.py && python3 .claude/project-map/test_grader.py && python3 .claude/project-map/test_context_check.py && python3 .claude/project-map/test_structure_check.py"
   },
   "files": [
     "bin/",
@@ -23,10 +23,12 @@
     ".claude/project-map/grader.py",
     ".claude/project-map/mine-sessions.py",
     ".claude/project-map/context-check.py",
+    ".claude/project-map/structure-check.py",
     ".claude/project-map/test_generate.py",
     ".claude/project-map/test_mine_sessions.py",
     ".claude/project-map/test_grader.py",
     ".claude/project-map/test_context_check.py",
+    ".claude/project-map/test_structure_check.py",
     ".githooks/",
     "skills/",
     "install.sh",
