@@ -223,6 +223,151 @@ def test_repo_pointer_without_checkout_warns(tmp):
     assert "WARN  ../api" not in check(tmp / "web").stdout
 
 
+# ── environments ─────────────────────────────────────────────────────────────
+
+ENV_MANIFEST = '''
+mode = "monorepo"
+root_files = ["README.md"]
+
+[[folder]]
+path = "infra"
+
+[[folder]]
+path = "apps"
+
+[[folder]]
+path = "migrations"
+
+[[folder]]
+path = ".github"
+
+[[environment]]
+name = "dev"
+target = "local"
+promotes_to = "stg"
+
+[[environment]]
+name = "stg"
+target = "cloud"
+promotes_to = "prod"
+mirrors = "prod"
+
+[[environment]]
+name = "prod"
+target = "cloud"
+'''
+
+ENV_TREE = {
+    "README.md": "x",
+    "infra/env/dev/.env.example": "A=dev\n",
+    "infra/env/stg/.env.example": "A=stg\n",
+    "infra/env/prod/.env.example": "A=prod\n",
+    "infra/compose/base.yml": "services: {}\n",
+    "infra/deploy/base/main.tf": "module {}\n",
+    "infra/deploy/stg/main.tf": "env = stg\n",
+    "infra/deploy/prod/main.tf": "env = prod\n",
+    "apps/api/main.py": "x",
+    "migrations/001_init.sql": "x",
+}
+
+
+def env_add(tmp: Path, files: dict[str, str]) -> subprocess.CompletedProcess:
+    tree = {**ENV_TREE, **files}
+    return check(make_repo(tmp, tree, manifest=ENV_MANIFEST))
+
+
+def test_clean_environment_tree_passes(tmp):
+    r = check(make_repo(tmp, ENV_TREE, manifest=ENV_MANIFEST))
+    assert r.returncode == 0, r.stdout
+
+
+def test_undeclared_environment_folder_fails(tmp):
+    r = env_add(tmp, {"infra/env/qa/.env.example": "A=qa\n"})
+    assert r.returncode == 1 and "infra/env/qa/" in r.stdout and "'qa' is not declared" in r.stdout, r.stdout
+
+
+def test_stg_must_mirror_prod(tmp):
+    r = env_add(tmp, {"infra/deploy/prod/redis.tf": "redis\n"})
+    assert r.returncode == 1 and "infra/deploy/stg/redis.tf" in r.stdout and "mirrors prod" in r.stdout, r.stdout
+
+
+def test_dev_is_exempt_from_parity(tmp):
+    r = env_add(tmp, {"infra/env/dev/seed.sql": "dev seed\n"})
+    assert r.returncode == 0, r.stdout
+
+
+def test_local_only_file_in_cloud_env_fails(tmp):
+    r = env_add(tmp, {"infra/env/prod/seed.sql": "p\n", "infra/env/stg/seed.sql": "s\n"})
+    assert r.returncode == 1 and "infra/env/prod/seed.sql" in r.stdout and "local-only" in r.stdout, r.stdout
+
+
+def test_deploy_file_in_local_env_fails(tmp):
+    r = env_add(tmp, {"infra/deploy/dev/main.tf": "dev\n"})
+    assert r.returncode == 1 and "infra/deploy/dev/main.tf" in r.stdout and "deploy config" in r.stdout, r.stdout
+
+
+def test_identical_copy_of_shared_file_fails(tmp):
+    r = env_add(tmp, {"infra/env/dev/base.yml": "services: {}\n"})
+    assert r.returncode == 1 and "identical copy of infra/compose/base.yml" in r.stdout, r.stdout
+
+
+def test_empty_files_are_not_copies(tmp):
+    r = env_add(tmp, {"infra/env/dev/.gitkeep": "", "apps/api/.gitkeep": ""})
+    assert r.returncode == 0, r.stdout
+
+
+def test_per_environment_migrations_fail(tmp):
+    r = env_add(tmp, {"migrations/prod/002.sql": "p\n"})
+    assert r.returncode == 1 and "migrations/prod/002.sql" in r.stdout and "per-environment migration" in r.stdout
+    r = env_add(tmp / "b", {"infra/env/dev/migrations/001.sql": "d\n"})
+    assert r.returncode == 1 and "per-environment migration" in r.stdout, r.stdout
+
+
+def test_per_app_env_folder_outside_env_roots_fails(tmp):
+    r = env_add(tmp, {"apps/api/env/prod/.env.example": "A=1\n"})
+    assert r.returncode == 1 and "apps/api/env/prod/" in r.stdout and "outside env_roots" in r.stdout, r.stdout
+
+
+def test_custom_env_roots(tmp):
+    m = ENV_MANIFEST.replace('root_files', 'env_roots = ["k8s/overlays"]\nroot_files') + '[[folder]]\npath = "k8s"\n'
+    tree = {"README.md": "x", "k8s/overlays/stg/kustomization.yaml": "a", "k8s/overlays/prod/kustomization.yaml": "b"}
+    assert check(make_repo(tmp, tree, manifest=m)).returncode == 0
+    tree["k8s/overlays/prod/hpa.yaml"] = "c"
+    r = check(make_repo(tmp / "b", tree, manifest=m))
+    assert r.returncode == 1 and "k8s/overlays/stg/hpa.yaml" in r.stdout, r.stdout
+
+
+def test_per_environment_workflow_copies_warn(tmp):
+    r = env_add(tmp, {".github/workflows/deploy-stg.yml": "a", ".github/workflows/deploy-prod.yml": "b"})
+    assert r.returncode == 0 and "deploy-{env}.yml" in r.stdout and "WARN" in r.stdout, r.stdout
+
+
+def test_no_environments_declared_skips_env_rules(tmp):
+    m = ENV_MANIFEST.split("[[environment]]")[0]
+    tree = {**ENV_TREE, "infra/env/qa/x": "1", "infra/deploy/prod/redis.tf": "r"}
+    assert check(make_repo(tmp, tree, manifest=m)).returncode == 0
+
+
+# ── secrets ──────────────────────────────────────────────────────────────────
+
+def test_tracked_env_file_fails_and_cannot_be_excepted(tmp):
+    m = BASE_MANIFEST.replace('root_files', 'exceptions = ["src/.env"]\nroot_files').replace('["**/*.py"]', '["**"]')
+    r = check(make_repo(tmp, {"README.md": "x", "src/.env": "SECRET=1"}, manifest=m))
+    assert r.returncode == 1 and "secrets file is tracked" in r.stdout, r.stdout
+
+
+def test_secret_variants_fail_examples_pass(tmp):
+    m = BASE_MANIFEST.replace('["**/*.py"]', '["**"]')
+    bad = {"src/.env.production": "x", "src/prod.env": "x"}
+    ok = {"src/.env.example": "x", "src/.env.prod.example": "x", "src/.envrc": "x"}
+    r = check(make_repo(tmp, {"README.md": "x", **bad, **ok}, manifest=m))
+    assert r.returncode == 1, r.stdout
+    for p in bad:
+        assert f"FAIL  {p}" in r.stdout, r.stdout
+    for p in ok:
+        assert p not in r.stdout, r.stdout
+
+
 def test_old_python_warns_and_skips(tmp):
     """Python < 3.11 has no tomllib: a readable WARN, exit 0, never a block."""
     make_repo(tmp, {"README.md": "x"})

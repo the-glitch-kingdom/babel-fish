@@ -40,6 +40,20 @@ MODES = ("monorepo", "single", "multi-repo")
 STATUSES = ("planned", "active", "deprecated")
 TARGETS = ("local", "cloud")
 
+# Environments. An env folder is <env_root>/<env name>/; siblings named below hold
+# what every environment shares (base + overlay).
+DEFAULT_ENV_ROOTS = ["infra/env", "infra/deploy"]
+SHARED_ENV_DIRS = {"base", "shared", "common", "modules"}
+ENV_PARENT_DIRS = {"env", "envs", "environments", "overlays"}  # <parent>/<env>/ outside env_roots
+MIGRATION_DIRS = {"migrations", "migration", "alembic"}
+SECRET_OK_SUFFIXES = (".example", ".sample", ".template", ".dist")  # .env.example, .env.prod.example ...
+# ponytail: fixed lists — extend here when a real repo needs another platform
+LOCAL_ONLY = ["**/*compose*.yml", "**/*compose*.yaml", "**/seed*", "**/seeds/**",
+              "**/fixtures/**", "**/*.pem", "**/*.crt", "**/*.key"]
+DEPLOY_ONLY = ["**/*.tf", "**/*.tfvars", "**/*.hcl", "**/kustomization.yaml", "**/kustomization.yml",
+               "**/Chart.yaml", "**/fly.toml", "**/render.yaml", "**/vercel.json", "**/railway.json"]
+EMPTY_BLOB = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"  # identical empty files are not copies
+
 
 def configure_paths(project_root: Path) -> None:
     """Rebind every root-derived path (#18: never set PROJECT_ROOT alone)."""
@@ -232,6 +246,101 @@ def check_folders(m: dict, files: dict[str, str], new: set[str]) -> list[Finding
     return out
 
 
+def check_secrets(files: dict[str, str]) -> list[Finding]:
+    """A real .env is never committed, in any mode, and no exception can allow it."""
+    out = []
+    for path in files:
+        name = path.rsplit("/", 1)[-1]
+        if name.endswith(SECRET_OK_SUFFIXES) or not (name == ".env" or name.startswith(".env.") or name.endswith(".env")):
+            continue
+        out.append(Finding("FAIL", path, "secrets file is tracked -- git rm --cached it, keep values in "
+                           "the environment or a secret manager, commit only .env.example", exemptable=False))
+    return out
+
+
+def check_environments(m: dict, files: dict[str, str]) -> list[Finding]:
+    """dev → stg → prod: declared envs only, deltas only, stg mirrors prod, local vs cloud kept apart."""
+    envs = {e["name"]: e for e in m.get("environment", [])}
+    if not envs:
+        return []
+    roots = [r.strip("/") for r in m.get("env_roots", DEFAULT_ENV_ROOTS)]
+    out, undeclared = [], set()
+    env_files: dict[tuple[str, str], set[str]] = {}  # (root, env) -> paths relative to root/env
+    in_env = set()
+
+    for path in sorted(files):
+        root = next((r for r in roots if path.startswith(r + "/")), None)
+        parts = path.split("/")
+        dirs = parts[:-1]
+        if root is None:
+            for i in range(1, len(dirs)):
+                if dirs[i] in envs and dirs[i - 1] in ENV_PARENT_DIRS:
+                    d = "/".join(dirs[:i + 1])
+                    if d not in undeclared:
+                        undeclared.add(d)
+                        out.append(Finding("FAIL", d + "/", f"per-environment folder outside env_roots {roots} -- "
+                                           f"move its deltas to <env_root>/{dirs[i]}/, or add its parent to env_roots"))
+            if set(dirs) & MIGRATION_DIRS and set(dirs) & set(envs):
+                out.append(Finding("FAIL", path, "per-environment migration -- migrations are shared: one folder, "
+                                   "the same path forward in every environment"))
+            continue
+        sub = path[len(root) + 1:]
+        if "/" not in sub:
+            continue  # shared file directly in the env root
+        env, rel = sub.split("/", 1)
+        if env in SHARED_ENV_DIRS:
+            continue
+        if env not in envs:
+            d = f"{root}/{env}"
+            if d not in undeclared:
+                undeclared.add(d)
+                out.append(Finding("FAIL", d + "/", f"environment {env!r} is not declared -- add an [[environment]], "
+                                   "or fold it into a declared one"))
+            continue
+        in_env.add(path)
+        env_files.setdefault((root, env), set()).add(rel)
+        target = envs[env]["target"]
+        if target == "cloud" and matches(rel, LOCAL_ONLY):
+            out.append(Finding("FAIL", path, f"local-only file in cloud environment {env!r} -- compose overrides, "
+                               "seeds and local certs belong to a local environment"))
+        elif target == "local" and matches(rel, DEPLOY_ONLY):
+            out.append(Finding("FAIL", path, f"deploy config in local environment {env!r} -- Terraform, k8s and "
+                               "platform files belong to a cloud environment"))
+        if set(rel.split("/")[:-1]) & MIGRATION_DIRS:
+            out.append(Finding("FAIL", path, "per-environment migration -- migrations are shared: one folder, "
+                               "the same path forward in every environment"))
+
+    for e in envs.values():
+        m_env = e.get("mirrors")
+        if not m_env:
+            continue
+        for root in roots:
+            a, b = env_files.get((root, e["name"]), set()), env_files.get((root, m_env), set())
+            for rel in sorted(b - a):
+                out.append(Finding("FAIL", f"{root}/{e['name']}/{rel}", f"missing: {e['name']} mirrors {m_env}, "
+                                   f"which has {root}/{m_env}/{rel} -- add it, or remove it from {m_env}"))
+            for rel in sorted(a - b):
+                out.append(Finding("FAIL", f"{root}/{m_env}/{rel}", f"missing: {e['name']} mirrors {m_env} and has "
+                                   f"{root}/{e['name']}/{rel} -- add it to {m_env}, or remove it from {e['name']}"))
+
+    shared = {sha: p for p, sha in files.items() if p not in in_env and sha != EMPTY_BLOB}
+    for path in sorted(in_env):
+        if files[path] in shared:
+            out.append(Finding("FAIL", path, f"identical copy of {shared[files[path]]} -- an environment folder "
+                               "holds only what differs; reference the shared file instead"))
+
+    token = re.compile(r"(?<![A-Za-z0-9])(" + "|".join(map(re.escape, envs)) + r")(?![A-Za-z0-9])")
+    groups: dict[str, list[str]] = {}
+    for path in files:
+        if path.startswith(".github/workflows/") and token.search(path):
+            groups.setdefault(token.sub("{env}", path), []).append(path)
+    for tmpl, paths in sorted(groups.items()):
+        if len(paths) > 1:
+            out.append(Finding("WARN", tmpl, f"per-environment workflow copies ({', '.join(sorted(paths))}) -- "
+                               "prefer one workflow that takes the environment as input"))
+    return out
+
+
 def check_repos(m: dict) -> list[Finding]:
     out = []
     for r in m.get("repo", []):
@@ -259,7 +368,8 @@ def apply_exceptions(findings: list[Finding], exceptions: list[str]) -> tuple[li
 def run(m: dict, staged: bool, since: str | None) -> int:
     """Print the report; return the number of FAILs."""
     files = tracked()
-    findings = check_folders(m, files, added(staged, since)) + check_repos(m)
+    findings = (check_folders(m, files, added(staged, since)) + check_environments(m, files)
+                + check_secrets(files) + check_repos(m))
     findings, baselined = apply_exceptions(findings, m.get("exceptions", []))
     fails = [f for f in findings if f.level == "FAIL"]
     warns = [f for f in findings if f.level == "WARN"]
