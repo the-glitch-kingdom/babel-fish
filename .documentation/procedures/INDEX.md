@@ -3,7 +3,7 @@ title: Procedures Documentation Index
 tier: reference
 domains: [procedures]
 status: active
-last_updated: '2026-09-25'
+last_updated: '2026-09-30'
 version: '1.0.0'
 purpose: Complete listing of procedures documentation
 ---
@@ -14,20 +14,19 @@ purpose: Complete listing of procedures documentation
 
 ## Overview
 
-- **Total Documents:** 0
+- **Total Documents:** 1
 - **Domain:** `procedures/`
 - **Category:** features
 - **Load Priority:** 6/10
 
 ## Documents
 
-*No documents in this domain yet.*
+### Guides
 
-To add a document:
+| Document | Status | Updated | Words |
+|----------|--------|---------|-------|
+| [Changing repo structure](changing-repo-structure.md) | active | 2026-09-30 | 573 |
 
-1. Create a markdown file in this directory
-2. Add YAML frontmatter with required metadata
-3. Run `npx hit-em-with-the-docs integrate <file>`
 ## Keywords
 
 This domain covers: procedure, procedures, sop, standard-operating-procedure, step, steps, operational, operation, operations, runbook
@@ -40,4 +39,4 @@ This domain covers: procedure, procedures, sop, standard-operating-procedure, st
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-30*

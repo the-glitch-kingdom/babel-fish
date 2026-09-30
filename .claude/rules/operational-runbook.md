@@ -157,6 +157,20 @@ To change what it enforces, add flags to its call in `.githooks/pre-commit`.
 
 Full reference: [`.documentation/standards/auto-loaded-context-check.md`](../../.documentation/standards/auto-loaded-context-check.md)
 
+### "[structure-check] Commit blocked", or it never runs
+
+Opt-in: it runs only when `.claude/structure.toml` exists. This repo has one since
+2.6.0. Every FAIL prints a `fix:` line. Three traps:
+
+- On Python < 3.11 it warns and **passes** (no `tomllib`). A clean local commit
+  there proves nothing; CI on 3.11+ is the real gate.
+- It checks the repo it is **installed in**, not the current directory. Running
+  another repo's copy without `--project-root` reads and writes the wrong repo.
+- Never widen `holds` to silence an old violation. Put it in `exceptions` so it
+  stays visible as backlog. A tracked `.env` can't be excepted at all.
+
+Full symptom table: [`.documentation/troubleshooting/structure-check-failures.md`](../../.documentation/troubleshooting/structure-check-failures.md)
+
 ## Deploy Procedures
 
 <!-- TODO: Document how to deploy to each environment -->
@@ -165,10 +179,11 @@ Full reference: [`.documentation/standards/auto-loaded-context-check.md`](../../
 
 | Command | What It Does |
 |---------|-------------|
-| `npm test` | Run all four project-map suites — generate (15), mine-sessions (13), grader (10), context-check (19). Stops at the first suite that fails, so a low count means an early exit, not a small suite |
+| `npm test` | Run all five project-map suites — generate (16), mine-sessions (13), grader (10), context-check (19), structure-check (62). Stops at the first suite that fails, so a low count means an early exit, not a small suite |
 | `python .claude/project-map/generate.py --force` | Force-regenerate project map |
 | `python .claude/project-map/grader.py` | Grade map quality (0-100%) |
 | `python .claude/project-map/context-check.py` | Budget + pointer check on CLAUDE.md and `.claude/rules/` (what the hook runs) |
+| `python .claude/project-map/structure-check.py` | Check files against `.claude/structure.toml` (`--detect` for repo facts, `--bootstrap` to start a manifest) |
 | `bash .githooks/install.sh` | (Re)install git hooks |
 | `bash .claude/install.sh` | Re-run full plugin installer |
 

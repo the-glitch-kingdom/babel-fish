@@ -3,7 +3,7 @@ title: Standards Documentation Index
 tier: reference
 domains: [standards]
 status: active
-last_updated: '2026-09-25'
+last_updated: '2026-09-30'
 version: '1.0.0'
 purpose: Complete listing of standards documentation
 ---
@@ -14,7 +14,7 @@ purpose: Complete listing of standards documentation
 
 ## Overview
 
-- **Total Documents:** 1
+- **Total Documents:** 2
 - **Domain:** `standards/`
 - **Category:** development
 - **Load Priority:** 10/10
@@ -26,6 +26,7 @@ purpose: Complete listing of standards documentation
 | Document | Status | Updated | Words |
 |----------|--------|---------|-------|
 | [Auto-loaded context check](auto-loaded-context-check.md) | active | 2026-09-25 | 162 |
+| [Repo structure check](repo-structure-check.md) | active | 2026-09-30 | 1,433 |
 
 ## Keywords
 
@@ -38,4 +39,4 @@ This domain covers: standard, standards, convention, conventions, pattern, patte
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-30*

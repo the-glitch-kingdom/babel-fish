@@ -242,6 +242,30 @@ python .claude/project-map/context-check.py --budget 80000 --map-style
 
 ---
 
+## Repo Structure Check *(2.6.0+)*
+
+The map shows where things **are**. An opt-in `.claude/structure.toml` says where they **should go**, and `structure-check.py` blocks the commit (and fails CI) when a file lands somewhere else.
+
+- **Folders with a lifecycle:** each approved folder has a purpose, optional `holds` globs, and a status of `planned`, `active` or `deprecated`. A deprecated folder takes no new files while the old ones move out.
+- **dev → stg → prod:** declared environments must stay separate:
+  - stg holds the same files as prod
+  - environment folders hold only what differs
+  - local tooling stays out of the cloud environments, and deploy config out of local ones
+  - migrations are shared across environments
+  - a real `.env` is never committed
+- **Modes:** `single`, `monorepo`, or `multi-repo`. In multi-repo, `[[repo]]` entries point at sibling repos, each running its own babel-fish.
+- **Adoption blocks nothing:** `--bootstrap` seeds an `exceptions` baseline from today's tree, so only *new* violations fail.
+
+```bash
+python .claude/project-map/structure-check.py --detect                      # mode, environments, folders
+python .claude/project-map/structure-check.py --bootstrap --layout monorepo # start a manifest (never overwrites)
+python .claude/project-map/structure-check.py --since origin/main           # CI
+```
+
+Or ask Claude to *"set up the repo structure"*. The `structure-bootstrap` skill reads the tree, fills in each folder's purpose, can plan a new repo from a description, and asks only what it can't infer. Needs Python 3.11+ (on older Python it warns and passes). See [repo structure check](./.documentation/standards/repo-structure-check.md) and [changing repo structure](./.documentation/procedures/changing-repo-structure.md).
+
+---
+
 ## File Structure
 
 ```
@@ -251,11 +275,14 @@ python .claude/project-map/context-check.py --budget 80000 --map-style
 │   ├── grader.py                # Quality grader
 │   ├── mine-sessions.py         # Session vocabulary miner
 │   ├── context-check.py         # Budget + pointer check for auto-loaded files
+│   ├── structure-check.py       # Files vs .claude/structure.toml (opt-in)
 │   ├── PROJECT_MAP.md           # TOC + quick routing guide
 │   ├── sections/                # 19 focused section files
 │   ├── reports/                 # Install and iteration reports
 │   ├── checksums.json           # Skip regeneration if unchanged
 │   └── learned-vocabulary.json  # Persisted session aliases
+├── structure.toml               # Your repo's structure manifest (you own it; never overwritten)
+├── templates/structure/         # Layouts: single, monorepo, multi-repo
 ├── rules/
 │   ├── project-vocabulary.md    # Auto-loaded every session
 │   └── operational-runbook.md   # Auto-loaded every session
@@ -263,7 +290,7 @@ python .claude/project-map/context-check.py --budget 80000 --map-style
     └── <project>-developer-skill/
         └── SKILL.md
 .githooks/
-├── pre-commit                   # Regenerates map; runs the context check
+├── pre-commit                   # Regenerates map; runs the context + structure checks
 └── install.sh                   # Register hooks: bash .githooks/install.sh
 ```
 
@@ -284,7 +311,7 @@ python .claude/project-map/context-check.py --budget 80000 --map-style
 ## Requirements
 
 - AI coding assistant (Claude Code, Cursor, or compatible)
-- Python ≥ 3.8 (auto-installed if missing)
+- Python ≥ 3.8 (auto-installed if missing); the structure check needs ≥ 3.11
 - Bash
 - Optional: `pip install pyyaml` for docker-compose YAML parsing (regex fallback included)
 
@@ -298,6 +325,7 @@ python .claude/project-map/context-check.py --budget 80000 --map-style
 | `python .claude/project-map/grader.py` | Grade map quality (0–100%) |
 | `python .claude/project-map/mine-sessions.py` | Mine session vocabulary |
 | `python .claude/project-map/context-check.py` | Check auto-loaded context: budget, pointers |
+| `python .claude/project-map/structure-check.py` | Check files against `.claude/structure.toml` (`--detect`, `--bootstrap`) |
 | `bash .githooks/install.sh` | (Re)install git hooks |
 | `bash .claude/install.sh` | Re-run full plugin installer |
 

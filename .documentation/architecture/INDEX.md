@@ -3,7 +3,7 @@ title: Architecture Documentation Index
 tier: reference
 domains: [architecture]
 status: active
-last_updated: '2026-09-25'
+last_updated: '2026-09-30'
 version: '1.0.0'
 purpose: Complete listing of architecture documentation
 ---
@@ -40,4 +40,4 @@ This domain covers: architecture, design, system, system-design, pattern, patter
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-30*

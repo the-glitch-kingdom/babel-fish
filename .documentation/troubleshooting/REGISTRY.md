@@ -3,7 +3,7 @@ title: Troubleshooting Registry
 tier: reference
 domains: [troubleshooting]
 status: active
-last_updated: '2026-09-25'
+last_updated: '2026-09-30'
 version: '1.0.0'
 purpose: Quick reference for troubleshooting documentation
 ---
@@ -16,7 +16,7 @@ purpose: Quick reference for troubleshooting documentation
 
 | Metric | Value |
 |--------|-------|
-| Documents | 2 |
+| Documents | 3 |
 | Category | advanced |
 | Load Priority | 6/10 |
 
@@ -24,9 +24,11 @@ purpose: Quick reference for troubleshooting documentation
 
 - [Learned vocabulary is empty](learned-vocabulary-empty.md)
 - [Project map is empty or stale](map-is-empty.md)
+- [Structure check failures](structure-check-failures.md)
 
 ## Recently Updated
 
+- [Structure check failures](structure-check-failures.md) - 2026-09-30
 - [Learned vocabulary is empty](learned-vocabulary-empty.md) - 2026-09-04
 - [Project map is empty or stale](map-is-empty.md) - 2026-09-04
 
@@ -34,7 +36,7 @@ purpose: Quick reference for troubleshooting documentation
 
 | Status | Count |
 |--------|-------|
-| active | 2 |
+| active | 3 |
 | draft | 0 |
 | deprecated | 0 |
 | archived | 0 |
@@ -50,4 +52,4 @@ purpose: Quick reference for troubleshooting documentation
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-30*

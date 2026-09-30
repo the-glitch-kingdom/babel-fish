@@ -3,7 +3,7 @@ title: Troubleshooting Documentation Index
 tier: reference
 domains: [troubleshooting]
 status: active
-last_updated: '2026-09-25'
+last_updated: '2026-09-30'
 version: '1.0.0'
 purpose: Complete listing of troubleshooting documentation
 ---
@@ -14,7 +14,7 @@ purpose: Complete listing of troubleshooting documentation
 
 ## Overview
 
-- **Total Documents:** 2
+- **Total Documents:** 3
 - **Domain:** `troubleshooting/`
 - **Category:** advanced
 - **Load Priority:** 6/10
@@ -27,6 +27,7 @@ purpose: Complete listing of troubleshooting documentation
 |----------|--------|---------|-------|
 | [Learned vocabulary is empty](learned-vocabulary-empty.md) | active | 2026-09-04 | 436 |
 | [Project map is empty or stale](map-is-empty.md) | active | 2026-09-04 | 740 |
+| [Structure check failures](structure-check-failures.md) | active | 2026-09-30 | 728 |
 
 ## Keywords
 
@@ -40,4 +41,4 @@ This domain covers: troubleshooting, troubleshoot, debug, debugging, issue, issu
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-30*
