@@ -515,6 +515,21 @@ def test_bootstrap_from_layout_on_a_new_repo_plans_everything(tmp):
     assert 'name = "stg"' in text and 'mirrors = "prod"' in text, text
 
 
+# ── skill ────────────────────────────────────────────────────────────────────
+
+def test_skill_only_names_flags_and_paths_that_exist():
+    """The skill drives the script: a renamed flag or moved template breaks it silently."""
+    import re
+    skill = (REPO / "skills/structure-bootstrap/SKILL.md").read_text()
+    assert skill.startswith("---\nname: structure-bootstrap\n"), skill[:60]
+    helptext = subprocess.run([sys.executable, str(SCRIPT), "--help"], capture_output=True, text=True).stdout
+    git_flags = {"--no-verify", "--cached"}
+    for flag in sorted(set(re.findall(r"(--[a-z][a-z-]+)", skill)) - git_flags):
+        assert flag in helptext, f"skill names {flag}, script has no such flag"
+    for path in (".claude/project-map/structure-check.py", ".claude/templates/structure"):
+        assert path in skill and (REPO / path).exists(), path
+
+
 def test_old_python_warns_and_skips(tmp):
     """Python < 3.11 has no tomllib: a readable WARN, exit 0, never a block."""
     make_repo(tmp, {"README.md": "x"})
