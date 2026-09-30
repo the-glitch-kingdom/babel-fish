@@ -102,6 +102,11 @@ POST-INSTALL COMMANDS
     python .claude/project-map/context-check.py
     python .claude/project-map/context-check.py --budget 80000 --map-style
 
+  Check files land where .claude/structure.toml says (opt-in; see --help):
+    python .claude/project-map/structure-check.py              # no manifest: explains the options
+    python .claude/project-map/structure-check.py --detect     # repo facts: mode, environments, folders
+    python .claude/project-map/structure-check.py --bootstrap  # write a starting manifest (never overwrites)
+
   Re-install git hooks (if you cloned a fresh copy):
     bash .githooks/install.sh
 
@@ -125,7 +130,8 @@ KEY FILES AFTER INSTALL
   .claude/rules/project-vocabulary.md       — Auto-loaded every session
   .claude/rules/operational-runbook.md      — Edit manually to grow over time
   .claude/skills/<slug>-developer-skill/    — Your developer skill
-  .githooks/pre-commit                      — Regenerates map; checks auto-loaded context
+  .githooks/pre-commit                      — Regenerates map; checks auto-loaded context + structure
+  .claude/templates/structure/*.toml        — Layout templates (single, monorepo, multi-repo)
 
 GRADING CATEGORIES (90% to pass)
   Section completeness  25%  — All 19 sections generated
@@ -405,6 +411,28 @@ fi
 SNIPPET
 )
 
+    local structure_snippet
+    structure_snippet=$(cat <<'SNIPPET'
+# ── Structure Check: files land where .claude/structure.toml says (#22) ──────
+# Opt-in: runs only once the repo has a manifest. On Python < 3.11 it warns and passes.
+if [ -f ".claude/structure.toml" ]; then
+    CHECK_SCRIPT=".claude/project-map/structure-check.py"
+    if [ -f "$CHECK_SCRIPT" ]; then
+        PYTHON=""
+        if [ -f ".venv/bin/python3" ]; then PYTHON=".venv/bin/python3"
+        elif command -v python3 &>/dev/null; then PYTHON="python3"
+        elif command -v python &>/dev/null; then PYTHON="python"
+        fi
+        if [ -n "$PYTHON" ] && ! $PYTHON "$CHECK_SCRIPT" --staged; then
+            echo "[structure-check] Commit blocked. Each FAIL above has a fix: line -- or change .claude/structure.toml if the structure should change." >&2
+            exit 1
+        fi
+    fi
+fi
+# ── End Structure Check ──────────────────────────────────────────────────────
+SNIPPET
+)
+
     if [ ! -f "$pre_commit" ]; then
         printf '#!/bin/bash\n' > "$pre_commit"
         ok "Created pre-commit hook"
@@ -420,6 +448,12 @@ SNIPPET
         ok "Added Context Check to pre-commit hook"
     else
         ok "pre-commit hook already contains Context Check snippet"
+    fi
+    if ! grep -q 'Structure Check' "$pre_commit" 2>/dev/null; then
+        { echo ""; echo "$structure_snippet"; } >> "$pre_commit"
+        ok "Added Structure Check to pre-commit hook"
+    else
+        ok "pre-commit hook already contains Structure Check snippet"
     fi
 
     chmod +x "$pre_commit"
@@ -512,7 +546,7 @@ if $DRY_RUN; then
     _dry "mkdir -p $CLAUDE_DIR/rules"
     _dry "mkdir -p $CLAUDE_DIR/skills/<project>-developer-skill/"
     _dry "copy  scripts/*.sh         → $CLAUDE_DIR/scripts/"
-    _dry "copy  templates/*.template → $CLAUDE_DIR/templates/"
+    _dry "copy  templates/*.template, templates/structure/*.toml → $CLAUDE_DIR/templates/"
     _dry "copy  project-map/*.py     → $CLAUDE_DIR/project-map/"
     _dry "write $CLAUDE_DIR/project-map/PROJECT_MAP.md"
     _dry "write $CLAUDE_DIR/project-map/sections/01-vocabulary.md  (+ 18 more sections)"
@@ -545,6 +579,8 @@ if [ "$PLUGIN_SOURCE_DIR" != "$CLAUDE_DIR" ]; then
     cp -r "$PLUGIN_SOURCE_DIR/project-map/grader.py" "$CLAUDE_DIR/project-map/" 2>/dev/null || true
     cp -r "$PLUGIN_SOURCE_DIR/project-map/mine-sessions.py" "$CLAUDE_DIR/project-map/" 2>/dev/null || true
     cp -r "$PLUGIN_SOURCE_DIR/project-map/context-check.py" "$CLAUDE_DIR/project-map/" 2>/dev/null || true
+    cp -r "$PLUGIN_SOURCE_DIR/project-map/structure-check.py" "$CLAUDE_DIR/project-map/" 2>/dev/null || true
+    # Never copies .claude/structure.toml: the manifest is the repo's own data (#22).
 fi
 
 # ── Step 1: Ensure Python ─────────────────────────────────────────────────────

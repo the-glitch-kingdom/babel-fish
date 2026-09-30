@@ -3,7 +3,7 @@ title: Documentation Index
 tier: reference
 domains: [root]
 status: active
-last_updated: '2026-09-25'
+last_updated: '2026-09-30'
 version: '1.0.0'
 purpose: Navigation hub for all documentation
 ---
@@ -24,12 +24,12 @@ purpose: Navigation hub for all documentation
 | [DevOps](#devops) | 0 | Deployment, CI/CD, Docker, environments, infrastructure |
 | [Features](#features) | 0 | Feature implementation guides, admin docs |
 | [Plans](#plans) | 0 | Planning documents, roadmaps, proposals |
-| [Procedures](#procedures) | 0 | Step-by-step operational procedures (SOP) |
+| [Procedures](#procedures) | 1 | Step-by-step operational procedures (SOP) |
 | [Quickstart](#quickstart) | 1 | Setup guides, dev workflow, onboarding |
 | [Security](#security) | 0 | Security, auth, Vault, Keycloak, RLS |
-| [Standards](#standards) | 1 | Coding standards (backend, frontend, database, devops, security) |
+| [Standards](#standards) | 2 | Coding standards (backend, frontend, database, devops, security) |
 | [Testing](#testing) | 0 | Test strategies, fixtures, patterns, integration/e2e |
-| [Troubleshooting](#troubleshooting) | 2 | Debug guides, common issues, solutions |
+| [Troubleshooting](#troubleshooting) | 3 | Debug guides, common issues, solutions |
 | [Workflows](#workflows) | 0 | Process documentation, multi-step operations |
 
 ---
@@ -127,7 +127,9 @@ purpose: Navigation hub for all documentation
 
 **Path:** `procedures/`
 
-*No documents yet.*
+| Document | Tier | Status | Updated |
+|----------|------|--------|----------|
+| [Changing repo structure](procedures/changing-repo-structure.md) | guide | active | 2026-09-30 |
 
 ---
 
@@ -162,6 +164,7 @@ purpose: Navigation hub for all documentation
 | Document | Tier | Status | Updated |
 |----------|------|--------|----------|
 | [Auto-loaded context check](standards/auto-loaded-context-check.md) | standard | active | 2026-09-25 |
+| [Repo structure check](standards/repo-structure-check.md) | standard | active | 2026-09-30 |
 
 ---
 
@@ -185,6 +188,7 @@ purpose: Navigation hub for all documentation
 |----------|------|--------|----------|
 | [Learned vocabulary is empty](troubleshooting/learned-vocabulary-empty.md) | guide | active | 2026-09-04 |
 | [Project map is empty or stale](troubleshooting/map-is-empty.md) | guide | active | 2026-09-04 |
+| [Structure check failures](troubleshooting/structure-check-failures.md) | guide | active | 2026-09-30 |
 
 ---
 
@@ -200,6 +204,6 @@ purpose: Navigation hub for all documentation
 
 ## Maintenance
 
-- **Last generated:** 2026-09-25
+- **Last generated:** 2026-09-30
 - **Run maintenance:** `npx hit-em-with-the-docs maintain`
 - **Regenerate index:** `npx hit-em-with-the-docs index`

@@ -14,4 +14,6 @@
 | policy | command | commands/policy.md | Get or set the babel-fish update policy (auto \| nudge \| off) |
 | relink | command | commands/relink.md | Re-run the skill linker — refresh symlinks from node_modules into .claude/skills/ |
 | status | command | commands/status.md | Show installed version, latest available version, current update policy, and hook registration state |
+| structure bootstrap | skill | skills/structure-bootstrap/SKILL.md | Set up, adopt or change a repo's structure manifest (.claude/structure.toml) — the approved folders, what each may hold, |
+| structure-bootstrap | skill | skills/structure-bootstrap/SKILL.md | Set up, adopt or change a repo's structure manifest (.claude/structure.toml) — the approved folders, what each may hold, |
 | update | command | commands/update.md | Update babel-fish to the latest version (runs npm update + re-links skills) |

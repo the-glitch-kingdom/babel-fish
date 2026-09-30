@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
-  "generated_at": "2026-09-05T04:36:57Z",
+  "generated_at": "2026-09-30T23:31:06Z",
   "source": ".claude/project-map/sections/01-vocabulary.md",
   "project": "babel-fish",
-  "entry_count": 10,
+  "entry_count": 12,
   "entries": [
     {
       "key": "/policy",
@@ -58,6 +58,18 @@
       "canonical_path": "commands/status.md",
       "section": "command",
       "description": "Show installed version, latest available version, current update policy, and hook registration state"
+    },
+    {
+      "key": "structure bootstrap",
+      "canonical_path": "skills/structure-bootstrap/SKILL.md",
+      "section": "skill",
+      "description": "Set up, adopt or change a repo's structure manifest (.claude/structure.toml) — the approved folders, what each may hold,"
+    },
+    {
+      "key": "structure-bootstrap",
+      "canonical_path": "skills/structure-bootstrap/SKILL.md",
+      "section": "skill",
+      "description": "Set up, adopt or change a repo's structure manifest (.claude/structure.toml) — the approved folders, what each may hold,"
     },
     {
       "key": "update",

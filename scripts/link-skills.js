@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Postinstall — delegates to @theglitchking/claude-plugin-runtime.
-// babel-fish ships one skill (skills/babel-fish-developer-skill/) which
-// the runtime symlinks into <project>/.claude/skills/ so Claude Code
-// can discover it. Runtime also writes the default update-policy config
+// babel-fish ships two skills (skills/babel-fish-developer-skill/ and
+// skills/structure-bootstrap/) which the runtime symlinks into
+// <project>/.claude/skills/ so Claude Code can discover them. Runtime also writes the default update-policy config
 // and registers the SessionStart hook (with plugin-vs-npm dedup).
 //
 // NOTE: npm install only handles the skill + update policy. To get the

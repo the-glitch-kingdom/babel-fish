@@ -1,0 +1,87 @@
+# Repo structure manifest -- checked by .claude/project-map/structure-check.py (#22).
+# This is the repo's own data: edit it by hand; babel-fish never overwrites it.
+#
+# Mode is single although --detect says multi-repo: the siblings in the-glitch-kingdom/
+# are separate products, not repos this one works in. No environments: babel-fish
+# ships as an npm package and a Claude Code plugin, and has no deployed runtime.
+mode = "single"
+root_files = [
+  ".gitignore",
+  "CHANGELOG.md",
+  "CLAUDE.md",
+  "LICENSE",
+  "README.md",
+  "babel.jpg",
+  "checksums.json",
+  "install.sh",
+  "package.json",
+  "plugin-metadata.json",
+]
+
+[[folder]]
+path = ".claude"
+purpose = "Plugin payload + this repo's own Claude Code config: installer, project-map scripts and output, rules, templates, helper scripts, the structure manifest"
+status = "active"
+added = "2026-09-30"
+
+[[folder]]
+path = ".claude-plugin"
+purpose = "Claude Code plugin + marketplace manifests -- their versions bump together with package.json"
+holds = ["*.json"]
+status = "active"
+added = "2026-09-30"
+
+[[folder]]
+path = ".documentation"
+purpose = "Prose docs managed by hit-em-with-the-docs (domain folders, generated INDEX/REGISTRY)"
+holds = ["**/*.md", "**/.gitkeep"]
+status = "active"
+added = "2026-09-30"
+
+[[folder]]
+path = ".githooks"
+purpose = "Git hooks for this repo (core.hooksPath); install.sh carries the same blocks for installs"
+holds = ["pre-commit", "install.sh"]
+status = "active"
+added = "2026-09-30"
+
+[[folder]]
+path = ".planning"
+purpose = "persistent-planning plans -- gitignored; the tracked files are one legacy plan"
+status = "active"
+added = "2026-09-30"
+
+[[folder]]
+path = "bin"
+purpose = "npx CLI entry point (babel-fish init / update / status)"
+holds = ["*.js"]
+status = "active"
+added = "2026-09-30"
+
+[[folder]]
+path = "commands"
+purpose = "Slash commands shipped with the plugin"
+holds = ["*.md"]
+status = "active"
+added = "2026-09-30"
+
+[[folder]]
+path = "hooks"
+purpose = "Claude Code hook registration and the SessionStart script"
+holds = ["hooks.json", "*.js"]
+status = "active"
+added = "2026-09-30"
+
+[[folder]]
+path = "scripts"
+purpose = "npm lifecycle scripts (postinstall skill linker)"
+holds = ["*.js"]
+status = "active"
+added = "2026-09-30"
+
+[[folder]]
+path = "skills"
+purpose = "Skills shipped with the plugin, one folder each, linked into .claude/skills/ on install"
+holds = ["*/**"]
+status = "active"
+added = "2026-09-30"

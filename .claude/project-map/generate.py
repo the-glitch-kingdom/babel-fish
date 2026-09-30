@@ -1522,6 +1522,30 @@ def write_glossary(vocab: list[dict], stack: dict) -> Path:
 # ║  PROJECT MAP TOC                                                         ║
 # ╚══════════════════════════════════════════════════════════════════════════╝
 
+def build_structure_pointer() -> list[str]:
+    """Where files go (#22): a pointer to the manifest, never a copy of it."""
+    manifest = PROJECT_ROOT / '.claude' / 'structure.toml'
+    if not manifest.is_file():
+        return []
+    lines = [
+        "",
+        "## Repo Structure\n",
+        "Where files go — approved folders, environments, related repos: "
+        "`.claude/structure.toml`. Checked on commit by `structure-check.py`.",
+    ]
+    try:
+        import tomllib
+        m = tomllib.loads(manifest.read_text(encoding='utf-8'))
+    except Exception:  # Python < 3.11 or a broken manifest: the pointer alone still helps
+        return lines
+    repos = [r for r in m.get('repo', []) if isinstance(r, dict)]
+    if repos:
+        lines.append("\nRelated repos — each keeps its own map:\n")
+        lines += [f"- **{r.get('name', '?')}** `{r.get('path') or r.get('url', '')}`"
+                  + (f" — {r['purpose']}" if r.get('purpose') else '') for r in repos]
+    return lines
+
+
 def build_project_map(
     stack: dict,
     routes: list[dict],
@@ -1596,6 +1620,7 @@ def build_project_map(
         when = WHEN_TO_READ.get(num, '')
         lines.append(f"| [{num}](sections/{path.name}) | {display} | {size_kb:.1f} KB | {when} |")
 
+    lines += build_structure_pointer()
     lines += [
         "",
         "## Quick Routing\n",

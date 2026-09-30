@@ -3,7 +3,7 @@ title: Procedures Registry
 tier: reference
 domains: [procedures]
 status: active
-last_updated: '2026-09-25'
+last_updated: '2026-09-30'
 version: '1.0.0'
 purpose: Quick reference for procedures documentation
 ---
@@ -16,13 +16,26 @@ purpose: Quick reference for procedures documentation
 
 | Metric | Value |
 |--------|-------|
-| Documents | 0 |
+| Documents | 1 |
 | Category | features |
 | Load Priority | 6/10 |
 
-## Documents
+## Active Documents
 
-*No documents in this domain yet.*
+- [Changing repo structure](changing-repo-structure.md)
+
+## Recently Updated
+
+- [Changing repo structure](changing-repo-structure.md) - 2026-09-30
+
+## By Status
+
+| Status | Count |
+|--------|-------|
+| active | 1 |
+| draft | 0 |
+| deprecated | 0 |
+| archived | 0 |
 
 ## Keywords
 
@@ -35,4 +48,4 @@ purpose: Quick reference for procedures documentation
 
 ---
 
-*Last updated: 2026-09-25*
+*Last updated: 2026-09-30*
