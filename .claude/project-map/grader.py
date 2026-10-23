@@ -49,11 +49,20 @@ def configure_paths(project_root: Path) -> None:
 
 PASS_THRESHOLD = 90.0
 
-# ── Secret pattern (mirrors generate.py) ─────────────────────────────────────
+# ── Secret pattern (identical to generate.SECRET_PATTERNS; test_grader pins it) ─
+# generate.py redacts with it, so a hit here means something bypassed redaction.
 SECRET_PATTERN = re.compile(
-    r'(?i)(password|secret|token|api_key|apikey|private_key|auth_token|'
+    r'(?i:password|secret|token|api_key|apikey|private_key|auth_token|'
     r'access_key|secret_key|client_secret|db_pass|database_password|'
-    r'stripe_key|twilio_auth|sendgrid_key|aws_secret)\s*[=:]\s*[^\[\n\r]{4,}'
+    r'stripe_key|twilio_auth|sendgrid_key|aws_secret)\s*[=:]\s*(?!\[)[^\s`|"\',]+'
+    r'|(?<=://)(?!\[REDACTED\])[^\s/@`|]+(?=@)'      # URL userinfo: postgres://user:pass@, DSN keys
+    r'|\b[sr]k_(?:live|test)_[0-9A-Za-z]{8,}'        # Stripe
+    r'|\bsk-[A-Za-z0-9_-]{16,}'                      # OpenAI / Anthropic style
+    r'|\bgh[pousr]_[A-Za-z0-9]{20,}|\bgithub_pat_\w{20,}'
+    r'|\bxox[abprs]-[A-Za-z0-9-]{10,}'               # Slack tokens
+    r'|hooks\.slack\.com/services/[A-Za-z0-9/]+'
+    r'|\bAKIA[0-9A-Z]{16}\b|\bAIza[0-9A-Za-z_-]{35}'  # AWS access key, Google API key
+    r'|-----BEGIN [A-Z ]*PRIVATE KEY-----'
 )
 
 # ── Grading weights ───────────────────────────────────────────────────────────
@@ -220,7 +229,7 @@ def grade_secret_safety() -> GradeResult:
     files_checked = 0
     leaks_found = 0
 
-    check_paths: list[Path] = [MAP_DIR / 'PROJECT_MAP.md']
+    check_paths: list[Path] = [MAP_DIR / 'PROJECT_MAP.md', MAP_DIR / 'glossary.json']
     if SECTIONS_DIR.exists():
         check_paths.extend(SECTIONS_DIR.glob('*.md'))
 
@@ -233,7 +242,8 @@ def grade_secret_safety() -> GradeResult:
             for m in SECRET_PATTERN.finditer(content):
                 line_num = content[:m.start()].count('\n') + 1
                 leaks_found += 1
-                issues.append(f"Potential secret in {path.name}:{line_num} — `{m.group()[:50]}...`")
+                # Never echo the match: this text lands in the committed install report.
+                issues.append(f"Potential secret in {path.name}:{line_num} (value withheld)")
         except Exception as e:
             issues.append(f"Could not read {path.name}: {e}")
 

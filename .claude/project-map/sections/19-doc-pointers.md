@@ -7,6 +7,7 @@
 - [`.documentation/architecture/grading-semantics.md`](.documentation/architecture/grading-semantics.md)
 - [`.documentation/architecture/project-map-watch-set.md`](.documentation/architecture/project-map-watch-set.md)
 - [`.documentation/architecture/session-vocabulary-mining.md`](.documentation/architecture/session-vocabulary-mining.md)
+- [`.documentation/knowledge-base/facts/map-env-section-never-holds-values.md`](.documentation/knowledge-base/facts/map-env-section-never-holds-values.md)
 - [`.documentation/procedures/changing-repo-structure.md`](.documentation/procedures/changing-repo-structure.md)
 - [`.documentation/quickstart/integration-with-semantic-memory.md`](.documentation/quickstart/integration-with-semantic-memory.md)
 - [`.documentation/standards/auto-loaded-context-check.md`](.documentation/standards/auto-loaded-context-check.md)

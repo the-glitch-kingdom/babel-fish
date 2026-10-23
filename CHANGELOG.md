@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Security
+
+- **The project map no longer copies secrets into committed files.** Section 03
+  printed values from the real `.env` whenever the key name looked harmless, so
+  `DATABASE_URL=postgres://user:pass@…`, `*_DSN`, `*_WEBHOOK_URL` and keys such as
+  `STRIPE_SK` landed in `03-environment.md` in full; nginx `proxy_pass` URLs with
+  credentials landed in `14-reverse-proxy.md`. `redact_secrets()` existed but was
+  never called. Now:
+  - Section 03 lists **variable names only, never values**, from env files (the
+    root ones plus `structure.toml`'s `env_file` location) **and** the code that
+    reads them (`process.env`, `import.meta.env`, `os.environ`, `os.getenv`,
+    `os.Getenv`), so it is populated even without an env file.
+  - Every map write goes through `redact_secrets()`: section files,
+    `PROJECT_MAP.md` and glossary descriptions. The pattern now also covers
+    URL credentials, Stripe / OpenAI-style / GitHub / Slack / AWS / Google keys
+    and private-key blocks.
+  - The grader uses the same pattern (a test pins the two equal), scans
+    `glossary.json`, and no longer quotes the matched text into the committed
+    install report. The old grader scored the leaking map 100% on Secret Safety.
+
+  Regenerating removes leaked values from the map, but **not from git history**.
+  A secret that was ever committed in a map section must be rotated.
+
+### Added
+
+- **Standards rules on init.** The installer writes `git-workflow.md`,
+  `secrets-management.md` and `dependency-versions.md` into `.claude/rules/`:
+  - branch first, PR, wait for approval before merging;
+  - no hardcoded secrets or URLs, all in `.env`;
+  - latest stable / LTS versions unless a failure is recorded.
+
+  Each is written once and never overwritten, and is skipped when the repo
+  already has a rule on that topic. The default branch is filled in from
+  `origin/HEAD` (fallback `main`, or `master` when that is the only branch).
+
 ## [2.6.0] - 2026-09-30
 
 ### Added

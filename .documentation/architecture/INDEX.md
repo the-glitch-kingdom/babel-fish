@@ -3,7 +3,7 @@ title: Architecture Documentation Index
 tier: reference
 domains: [architecture]
 status: active
-last_updated: '2026-09-30'
+last_updated: '2026-10-23'
 version: '1.0.0'
 purpose: Complete listing of architecture documentation
 ---
@@ -25,7 +25,7 @@ purpose: Complete listing of architecture documentation
 
 | Document | Status | Updated | Words |
 |----------|--------|---------|-------|
-| [Grading semantics](grading-semantics.md) | active | 2026-09-04 | 603 |
+| [Grading semantics](grading-semantics.md) | active | 2026-10-22 | 615 |
 | [Project map watch set](project-map-watch-set.md) | active | 2026-09-04 | 689 |
 | [Session vocabulary mining](session-vocabulary-mining.md) | active | 2026-09-04 | 654 |
 
@@ -40,4 +40,4 @@ This domain covers: architecture, design, system, system-design, pattern, patter
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-23*

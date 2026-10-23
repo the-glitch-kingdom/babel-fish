@@ -3,7 +3,7 @@ title: Quickstart Registry
 tier: reference
 domains: [quickstart]
 status: active
-last_updated: '2026-09-30'
+last_updated: '2026-10-23'
 version: '1.0.0'
 purpose: Quick reference for quickstart documentation
 ---
@@ -48,4 +48,4 @@ purpose: Quick reference for quickstart documentation
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-23*

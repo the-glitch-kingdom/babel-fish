@@ -674,6 +674,37 @@ def test_install_copies_the_check_and_never_touches_the_manifest(tmp):
     assert hook.count("# ── Structure Check") == 1, "re-running the installer duplicated the block"
 
 
+def test_install_writes_standards_rules_once(tmp):
+    """git-workflow / secrets-management / dependency-versions: written once, never overwritten,
+    and skipped when the repo already has its own rule on that topic."""
+    root = make_repo(tmp / "p", {"README.md": "x", ".claude/rules/secrets.md": "# ours\n"}, manifest=None)
+    install = ["bash", str(REPO / ".claude/install.sh"), str(root)]
+    r = subprocess.run(install, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    rules = root / ".claude/rules"
+    assert (rules / "secrets.md").read_text() == "# ours\n"
+    assert not (rules / "secrets-management.md").exists(), "a similar rule exists; must not add a second"
+    git = (rules / "git-workflow.md").read_text()
+    assert "{{" not in git and "merge to `main` without explicit permission" in git, git[:400]
+    assert "LTS" in (rules / "dependency-versions.md").read_text()
+    (rules / "git-workflow.md").write_text("# edited\n")
+    r = subprocess.run(install, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    assert (rules / "git-workflow.md").read_text() == "# edited\n", "re-install overwrote a rule the repo owns"
+
+
+def test_install_fills_in_master_when_that_is_the_branch(tmp):
+    root = tmp / "m"
+    subprocess.run(["git", "init", "-q", "-b", "master", str(root)], check=True)
+    (root / "README.md").write_text("x")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    subprocess.run(GIT + ["commit", "-qm", "init"], cwd=root, check=True)
+    r = subprocess.run(["bash", str(REPO / ".claude/install.sh"), str(root)], capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    git = (root / ".claude/rules/git-workflow.md").read_text()
+    assert "`master`" in git and "`main`" not in git, git[:400]
+
+
 def test_installer_checksum_matches_install_sh():
     """The curl installer verifies this hash first; editing install.sh without it breaks installs (runbook)."""
     import hashlib

@@ -3,7 +3,7 @@ title: Quickstart Documentation Index
 tier: reference
 domains: [quickstart]
 status: active
-last_updated: '2026-09-30'
+last_updated: '2026-10-23'
 version: '1.0.0'
 purpose: Complete listing of quickstart documentation
 ---
@@ -39,4 +39,4 @@ This domain covers: quickstart, quick-start, getting-started, setup, install, in
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-23*

@@ -33,6 +33,17 @@ Since 2.3.0 the grader prints usefulness warnings below the score — "Vocabular
 is empty" and "Scanned N source files but extracted nothing". Those are the
 lines worth reading; they do not affect pass/fail.
 
+### Secret Safety 100% did not mean nothing leaked
+
+Through 2.6.0, section 03 copied real `.env` values whose key looked harmless
+(`DATABASE_URL` with a password in it, `*_DSN`, webhook URLs), and the grader's
+`key=value` regex never matched a table cell, so it still scored 100%. Section 03
+now holds names only and every write goes through `redact_secrets()`.
+
+A grader hit now means something **bypassed** redaction: a new write path that
+skips `write_section()`. Route it through `redact_secrets()`; never loosen the
+pattern. A value that was ever committed in a map is in git history: rotate it.
+
 ### "No changes detected" after editing a file
 
 Only files in the watch set move the checksum. If `generate.py` skips

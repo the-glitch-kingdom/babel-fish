@@ -292,6 +292,66 @@ def test_project_root_writes_land_in_the_target(g):
     assert json.loads(written.read_text())["entry_count"] == 1
 
 
+# ── secrets never reach the map ──────────────────────────────────────────────
+
+PLANTED = ["hunter2pw", "abc123def456", "XXXXsecretXXXX", "sk_live_51Habcdefghijklmnop",
+           "pw0rd", "examplevalue"]
+
+
+def test_no_secret_reaches_any_output(g):
+    """Section 03 copied real .env values whose KEY looked harmless (DATABASE_URL,
+    *_DSN, *_WEBHOOK_URL), and redact_secrets() was never called. The grader
+    scored that map 100% on Secret Safety."""
+    import subprocess
+    root = g.PROJECT_ROOT
+    (root / ".env").write_text(
+        "DATABASE_URL=postgres://admin:hunter2pw@db.internal:5432/app\n"
+        "SENTRY_DSN=https://abc123def456@o1.ingest.sentry.io/1\n"
+        "SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T000/B000/XXXXsecretXXXX\n"
+        "export STRIPE_SK=sk_live_51Habcdefghijklmnop\n"
+    )
+    (root / ".env.example").write_text("PUBLIC_NAME=examplevalue\n")  # no values at all, even here
+    (root / "conf").mkdir()
+    (root / "conf/site.conf").write_text("server { location /api { proxy_pass http://svc:pw0rd@backend:8000; } }\n")
+    (root / "app.py").write_text('import os\nREDIS = os.getenv("REDIS_URL")\n')
+    r = subprocess.run([sys.executable, str(HERE / "generate.py"), "--force", "--project-root", str(root)],
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    out = root / ".claude" / "project-map"
+    for f in (p for p in out.rglob("*") if p.is_file()):
+        text = f.read_text(encoding="utf-8", errors="replace")
+        for s in PLANTED:
+            assert s not in text, f"{s!r} leaked into {f.relative_to(root)}"
+    env = (out / "sections" / "03-environment.md").read_text()
+    for key in ("DATABASE_URL", "SENTRY_DSN", "SLACK_WEBHOOK_URL", "STRIPE_SK", "PUBLIC_NAME", "REDIS_URL"):
+        assert f"`{key}`" in env, f"{key} missing from section 03:\n{env}"
+
+
+def test_env_keys_come_from_code_without_an_env_file(g):
+    (g.PROJECT_ROOT / "server.ts").write_text("const u = process.env.API_URL; const k = process.env['API_KEY'];\n")
+    (g.PROJECT_ROOT / "main.go").write_text('package main\nvar p = os.Getenv("PORT")\n')
+    keys = {e["key"]: e["sources"] for e in g.EnvParser().parse()}
+    assert keys == {"API_URL": ["server.ts"], "API_KEY": ["server.ts"], "PORT": ["main.go"]}, keys
+
+
+def test_env_keys_follow_structure_env_file(g):
+    root = g.PROJECT_ROOT
+    (root / ".claude").mkdir(exist_ok=True)
+    (root / ".claude/structure.toml").write_text('env_file = "apps/api/.env.example"\n')
+    (root / "apps/api").mkdir(parents=True)
+    (root / "apps/api/.env.example").write_text("# comment\nAPI_BASE_URL=\n")
+    keys = {e["key"]: e["sources"] for e in g.EnvParser().parse()}
+    assert keys == {"API_BASE_URL": ["apps/api/.env.example"]}, keys
+
+
+def test_redact_secrets_keeps_the_shape(g):
+    assert g.redact_secrets("postgres://u:p@h/db") == "postgres://[REDACTED]@h/db"
+    assert g.redact_secrets("| `/api` | `http://backend:8000` |") == "| `/api` | `http://backend:8000` |"
+    assert g.redact_secrets("| `password=hunter2` |") == "| `[REDACTED]` |"
+    for token in ("ghp_" + "a" * 36, "xoxb-1234567890-abc", "AKIA" + "A" * 16, "sk-ant-" + "b" * 20):
+        assert g.redact_secrets(f"x {token} y") == "x [REDACTED] y", token
+
+
 def main() -> int:
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     failed = []

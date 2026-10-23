@@ -3,8 +3,8 @@ title: Grading semantics
 tier: reference
 domains: [architecture]
 status: active
-last_updated: '2026-09-04'
-version: '1.0.0'
+last_updated: '2026-10-22'
+version: '1.1.0'
 purpose: What grader.py measures and what it deliberately does not, and why usefulness is warned about rather than scored
 ---
 
@@ -21,7 +21,7 @@ because it is easy to read it as a quality score and it is not one.
 | Section completeness | 25% | Are all 19 section files present? |
 | Vocabulary accuracy | 20% | Do vocabulary entries point at files that exist? |
 | Import chain validity | 15% | Do traced chains reference real modules? |
-| Secret safety | 15% | Did anything leak? |
+| Secret safety | 15% | Did anything get past `generate.py`'s redaction? (same pattern, so it catches bypasses, not judgment calls) |
 | Section size bounds | 10% | Is each section 0.1–50 KB? |
 | Structural integrity | 10% | Valid markdown, working TOC links? |
 | Checksum functionality | 5% | Does re-running skip correctly? |
