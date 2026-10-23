@@ -1,6 +1,6 @@
 # Section 03 — Environment Variables
 
-> Key names and non-sensitive values only. Secrets are redacted.
+> Variable names only, from env files and the code that reads them. Values are never copied out of env files.
 
 
-_No .env files found._
+_No environment variables found in env files or code._

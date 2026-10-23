@@ -152,6 +152,35 @@ def test_project_root_relocates_grader_paths(tmp):
     assert g.REPORTS_DIR.is_dir()
 
 
+def test_secret_pattern_matches_generate(tmp):
+    """Two copies (the scripts are standalone); if they drift the grader stops seeing what generate misses."""
+    spec = importlib.util.spec_from_file_location("gen", HERE / "generate.py")
+    gen = importlib.util.module_from_spec(spec)
+    argv, sys.argv = sys.argv, ["generate.py"]
+    try:
+        spec.loader.exec_module(gen)
+    finally:
+        sys.argv = argv
+    assert load_grader(tmp).SECRET_PATTERN.pattern == gen.SECRET_PATTERNS.pattern
+
+
+def test_leak_is_caught_and_never_echoed(tmp):
+    """The old pattern missed table cells and URL credentials, and quoted what it did find
+    into the committed install report."""
+    write_map(tmp, vocab=1, scanned=0)
+    (tmp / "sections/03-environment.md").write_text("# S\n\n| `DB` | `postgres://u:plantedpw@h/db` |\n")
+    r = load_grader(tmp).grade_secret_safety()
+    assert r.raw_score < 100, r.details
+    assert r.issues and not any("plantedpw" in i for i in r.issues), r.issues
+
+
+def test_redacted_map_is_clean(tmp):
+    write_map(tmp, vocab=1, scanned=0)
+    (tmp / "sections/03-environment.md").write_text("# S\n\n| `DB` | `postgres://[REDACTED]@h/db` |\n")
+    r = load_grader(tmp).grade_secret_safety()
+    assert r.raw_score == 100, r.issues
+
+
 def main() -> int:
     import inspect
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]

@@ -129,6 +129,9 @@ KEY FILES AFTER INSTALL
   .claude/project-map/reports/install-report.md — Quality report
   .claude/rules/project-vocabulary.md       — Auto-loaded every session
   .claude/rules/operational-runbook.md      — Edit manually to grow over time
+  .claude/rules/git-workflow.md             — Branch / PR / wait rules (written once, yours to edit)
+  .claude/rules/secrets-management.md       — No hardcoded secrets; everything in .env (written once)
+  .claude/rules/dependency-versions.md      — Latest stable/LTS unless a recorded failure (written once)
   .claude/skills/<slug>-developer-skill/    — Your developer skill
   .githooks/pre-commit                      — Regenerates map; checks auto-loaded context + structure
   .claude/templates/structure/*.toml        — Layout templates (single, monorepo, multi-repo)
@@ -306,6 +309,30 @@ _No known issues documented yet._
 RUNBOOK
     fi
     ok "Rendered: $out"
+}
+
+# Standards rules the repo owns after the first write. Skipped when any rules file on the
+# same topic exists (secrets.md, secrets-and-config.md, …), so a repo's own version wins.
+_render_rule_once() {
+    local name="$1"
+    local rules_dir="$2"
+    local rule="$3"
+    local keywords="$4"
+    local branch="$5"
+    local template="$TEMPLATES_DIR/$rule.md.template"
+    local similar
+
+    similar="$(ls "$rules_dir" 2>/dev/null | grep -E '\.md$' | grep -iE "$keywords" | head -1 || true)"
+    if [ -n "$similar" ]; then
+        ok "Rule on this topic already exists ($similar) — skipping $rule.md"
+        return
+    fi
+    if [ ! -f "$template" ]; then
+        warn "Template not found — skipping $rule.md: $template"
+        return
+    fi
+    sed -e "s|{{PROJECT_NAME}}|$name|g" -e "s|{{DEFAULT_BRANCH}}|$branch|g" "$template" > "$rules_dir/$rule.md"
+    ok "Rendered: $rules_dir/$rule.md"
 }
 
 _render_skill() {
@@ -553,6 +580,7 @@ if $DRY_RUN; then
     _dry "write $CLAUDE_DIR/project-map/reports/install-report.md"
     _dry "write $CLAUDE_DIR/rules/project-vocabulary.md"
     _dry "write $CLAUDE_DIR/rules/operational-runbook.md"
+    _dry "write $CLAUDE_DIR/rules/git-workflow.md, secrets-management.md, dependency-versions.md  (each skipped if a rule on that topic exists)"
     _dry "write $CLAUDE_DIR/skills/<project>-developer-skill/SKILL.md"
     _dry "write .githooks/pre-commit"
     _dry "run   git config core.hooksPath .githooks"
@@ -685,7 +713,20 @@ mkdir -p "$RULES_DIR" "$SKILLS_DIR"
 
 _render_vocabulary "$PROJECT_ROOT" "$NAME" "$LANG" "$FRAMEWORK" "$RULES_DIR"
 _render_runbook    "$PROJECT_ROOT" "$NAME" "$RULES_DIR"
-_render_skill      "$PROJECT_ROOT" "$NAME" "$SLUG" "$LANG" "$FRAMEWORK" "$SKILLS_DIR"
+
+DEFAULT_BRANCH="$(git -C "$PROJECT_ROOT" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+DEFAULT_BRANCH="${DEFAULT_BRANCH#origin/}"
+# origin/HEAD is unset on repos created locally and pushed later: fall back on which branch exists.
+if [ -z "$DEFAULT_BRANCH" ] && ! git -C "$PROJECT_ROOT" show-ref -q --verify refs/heads/main \
+        && git -C "$PROJECT_ROOT" show-ref -q --verify refs/heads/master; then
+    DEFAULT_BRANCH=master
+fi
+DEFAULT_BRANCH="${DEFAULT_BRANCH:-main}"
+_render_rule_once "$NAME" "$RULES_DIR" git-workflow        'git|branch|commit|pull-request' "$DEFAULT_BRANCH"
+_render_rule_once "$NAME" "$RULES_DIR" secrets-management  'secret|credential|env|config'   "$DEFAULT_BRANCH"
+_render_rule_once "$NAME" "$RULES_DIR" dependency-versions 'depend|version|package|upgrade' "$DEFAULT_BRANCH"
+
+_render_skill     "$PROJECT_ROOT" "$NAME" "$SLUG" "$LANG" "$FRAMEWORK" "$SKILLS_DIR"
 
 # ── Step 5: Git Hooks ─────────────────────────────────────────────────────────
 banner "Step 5: Git Hooks"

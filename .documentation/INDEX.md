@@ -3,7 +3,7 @@ title: Documentation Index
 tier: reference
 domains: [root]
 status: active
-last_updated: '2026-09-30'
+last_updated: '2026-10-23'
 version: '1.0.0'
 purpose: Navigation hub for all documentation
 ---
@@ -65,7 +65,7 @@ purpose: Navigation hub for all documentation
 
 | Document | Tier | Status | Updated |
 |----------|------|--------|----------|
-| [Grading semantics](architecture/grading-semantics.md) | reference | active | 2026-09-04 |
+| [Grading semantics](architecture/grading-semantics.md) | reference | active | 2026-10-22 |
 | [Project map watch set](architecture/project-map-watch-set.md) | reference | active | 2026-09-04 |
 | [Session vocabulary mining](architecture/session-vocabulary-mining.md) | reference | active | 2026-09-04 |
 
@@ -204,6 +204,6 @@ purpose: Navigation hub for all documentation
 
 ## Maintenance
 
-- **Last generated:** 2026-09-30
+- **Last generated:** 2026-10-23
 - **Run maintenance:** `npx hit-em-with-the-docs maintain`
 - **Regenerate index:** `npx hit-em-with-the-docs index`

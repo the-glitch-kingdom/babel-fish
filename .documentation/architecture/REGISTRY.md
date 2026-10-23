@@ -3,7 +3,7 @@ title: Architecture Registry
 tier: reference
 domains: [architecture]
 status: active
-last_updated: '2026-09-30'
+last_updated: '2026-10-23'
 version: '1.0.0'
 purpose: Quick reference for architecture documentation
 ---
@@ -28,7 +28,7 @@ purpose: Quick reference for architecture documentation
 
 ## Recently Updated
 
-- [Grading semantics](grading-semantics.md) - 2026-09-04
+- [Grading semantics](grading-semantics.md) - 2026-10-22
 - [Project map watch set](project-map-watch-set.md) - 2026-09-04
 - [Session vocabulary mining](session-vocabulary-mining.md) - 2026-09-04
 
@@ -52,4 +52,4 @@ purpose: Quick reference for architecture documentation
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-23*

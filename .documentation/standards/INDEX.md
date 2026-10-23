@@ -3,7 +3,7 @@ title: Standards Documentation Index
 tier: reference
 domains: [standards]
 status: active
-last_updated: '2026-09-30'
+last_updated: '2026-10-23'
 version: '1.0.0'
 purpose: Complete listing of standards documentation
 ---
@@ -39,4 +39,4 @@ This domain covers: standard, standards, convention, conventions, pattern, patte
 
 ---
 
-*Last updated: 2026-09-30*
+*Last updated: 2026-10-23*

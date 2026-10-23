@@ -63,14 +63,25 @@ def configure_paths(project_root: Path) -> None:
     SECTIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Secrets guard ────────────────────────────────────────────────────────────
+# Applied to every file the map writes (write_section, PROJECT_MAP.md, glossary
+# fields). grader.py carries an identical copy to find anything that got past it;
+# test_grader.py pins the two equal.
 SECRET_PATTERNS = re.compile(
-    r'(?i)(password|secret|token|api_key|apikey|private_key|auth_token|'
+    r'(?i:password|secret|token|api_key|apikey|private_key|auth_token|'
     r'access_key|secret_key|client_secret|db_pass|database_password|'
-    r'stripe_key|twilio_auth|sendgrid_key|aws_secret)\s*[=:]\s*\S+'
+    r'stripe_key|twilio_auth|sendgrid_key|aws_secret)\s*[=:]\s*(?!\[)[^\s`|"\',]+'
+    r'|(?<=://)(?!\[REDACTED\])[^\s/@`|]+(?=@)'      # URL userinfo: postgres://user:pass@, DSN keys
+    r'|\b[sr]k_(?:live|test)_[0-9A-Za-z]{8,}'        # Stripe
+    r'|\bsk-[A-Za-z0-9_-]{16,}'                      # OpenAI / Anthropic style
+    r'|\bgh[pousr]_[A-Za-z0-9]{20,}|\bgithub_pat_\w{20,}'
+    r'|\bxox[abprs]-[A-Za-z0-9-]{10,}'               # Slack tokens
+    r'|hooks\.slack\.com/services/[A-Za-z0-9/]+'
+    r'|\bAKIA[0-9A-Z]{16}\b|\bAIza[0-9A-Za-z_-]{35}'  # AWS access key, Google API key
+    r'|-----BEGIN [A-Z ]*PRIVATE KEY-----'
 )
 
 def redact_secrets(text: str) -> str:
-    return SECRET_PATTERNS.sub(r'[REDACTED]', text)
+    return SECRET_PATTERNS.sub('[REDACTED]', text)
 
 
 # ── Checksum logic ───────────────────────────────────────────────────────────
@@ -598,34 +609,53 @@ class DockerComposeParser:
 # ── Env Parser ───────────────────────────────────────────────────────────────
 
 class EnvParser:
-    SECRET_KEYS = re.compile(
-        r'(?i)(password|secret|token|key|auth|credential|private|cert)'
+    """Section 03: variable NAMES only, never values.
+
+    Filtering values by key name leaked: DATABASE_URL, *_DSN and *_WEBHOOK_URL
+    carry credentials under harmless names, and the real .env was read. Names
+    also come from the code, so the section is populated without an env file.
+    """
+    CANDIDATES = ['.env', '.env.example', '.env.local', '.env.development', '.env.sample']
+    KEY_RE = re.compile(r'^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=')
+    CODE_EXTS = {'.py', '.ts', '.tsx', '.js', '.jsx', '.go'}
+    CODE_RE = re.compile(
+        r'process\.env\.([A-Za-z_]\w*)'
+        r'|process\.env\[\s*[\'"]([A-Za-z_]\w*)'
+        r'|import\.meta\.env\.([A-Za-z_]\w*)'
+        r'|os\.environ(?:\.get\(|\[)\s*[\'"]([A-Za-z_]\w*)'
+        r'|os\.getenv\(\s*[\'"]([A-Za-z_]\w*)'
+        r'|os\.(?:Getenv|LookupEnv)\(\s*"([A-Za-z_]\w*)'
     )
 
+    def env_files(self) -> list[Path]:
+        dirs = [PROJECT_ROOT]
+        manifest = PROJECT_ROOT / '.claude' / 'structure.toml'
+        if manifest.is_file():
+            # shortcut: one string key read by regex (tomllib is 3.11+); parse the toml if more keys are needed
+            m = re.search(r'(?m)^env_file\s*=\s*["\']([^"\']+)["\']',
+                          manifest.read_text(encoding='utf-8', errors='replace'))
+            if m:
+                dirs.append((PROJECT_ROOT / m.group(1).strip('/')).parent)
+        files = [d / n for d in dict.fromkeys(dirs) for n in self.CANDIDATES]
+        return [f for f in files if f.is_file()]
+
     def parse(self) -> list[dict]:
-        entries = []
-        candidates = ['.env', '.env.example', '.env.local', '.env.development', '.env.sample']
-        for name in candidates:
-            path = PROJECT_ROOT / name
-            if not path.exists():
-                continue
+        seen: dict[str, list[str]] = {}
+        for path in self.env_files():
+            rel = path.relative_to(PROJECT_ROOT).as_posix()
             for line in path.read_text(encoding='utf-8', errors='replace').splitlines():
-                line = line.strip()
-                if not line or line.startswith('#'):
-                    continue
-                if '=' not in line:
-                    continue
-                key, _, raw_val = line.partition('=')
-                key = key.strip()
-                val = raw_val.strip()
-                is_secret = bool(self.SECRET_KEYS.search(key))
-                entries.append({
-                    'key': key,
-                    'value': '[SECRET]' if is_secret else val[:80],
-                    'is_secret': is_secret,
-                    'source': name,
-                })
-        return entries
+                m = self.KEY_RE.match(line)
+                if m and rel not in seen.setdefault(m.group(1), []):
+                    seen[m.group(1)].append(rel)
+        for f in collect_watched_files():
+            if f.suffix not in self.CODE_EXTS:
+                continue
+            rel = f.relative_to(PROJECT_ROOT).as_posix()
+            for groups in self.CODE_RE.findall(f.read_text(encoding='utf-8', errors='replace')):
+                key = next(g for g in groups if g)
+                if rel not in seen.setdefault(key, []):
+                    seen[key].append(rel)
+        return [{'key': k, 'sources': v} for k, v in sorted(seen.items())]
 
 
 # ── Migration Parser ─────────────────────────────────────────────────────────
@@ -1135,7 +1165,7 @@ class DeadCodeDetector:
 def write_section(num: str, name: str, content: str) -> Path:
     filename = f"{num}-{name}.md"
     path = SECTIONS_DIR / filename
-    path.write_text(content, encoding='utf-8')
+    path.write_text(redact_secrets(content), encoding='utf-8')
     return path
 
 def section_size_kb(path: Path) -> float:
@@ -1186,16 +1216,18 @@ def build_topology_section(services: list[dict]) -> str:
 def build_environment_section(env_entries: list[dict]) -> str:
     lines = [
         "# Section 03 — Environment Variables\n",
-        "> Key names and non-sensitive values only. Secrets are redacted.\n\n",
+        "> Variable names only, from env files and the code that reads them. "
+        "Values are never copied out of env files.\n\n",
     ]
     if not env_entries:
-        lines.append("_No .env files found._\n")
+        lines.append("_No environment variables found in env files or code._\n")
         return '\n'.join(lines)
-    lines += ["| Key | Value | Source |",
-              "|-----|-------|--------|"]
+    lines += ["| Key | Seen In |",
+              "|-----|---------|"]
     for e in env_entries:
-        val = '[SECRET]' if e.get('is_secret') else str(e.get('value', ''))[:60]
-        lines.append(f"| `{e['key']}` | `{val}` | {e.get('source', '')} |")
+        src = e['sources']
+        more = f" (+{len(src) - 3} more)" if len(src) > 3 else ''
+        lines.append(f"| `{e['key']}` | {', '.join(src[:3])}{more} |")
     return '\n'.join(lines) + '\n'
 
 
@@ -1497,7 +1529,8 @@ def write_glossary(vocab: list[dict], stack: dict) -> Path:
             'key': v.get('alias', ''),
             'canonical_path': v.get('location', ''),
             'section': v.get('type', ''),
-            'description': v.get('notes', '') or None,
+            # Per field, not on the dumped JSON: a match could swallow a closing quote.
+            'description': redact_secrets(v.get('notes', '')) or None,
         }
         for v in sorted(vocab, key=lambda x: x.get('alias', ''))
         if v.get('alias')
@@ -1752,7 +1785,7 @@ def main() -> None:
         scanned={'python': len(py_files), 'typescript/javascript': len(ts_files),
                  'go': len(go_files)},
     )
-    (MAP_DIR / 'PROJECT_MAP.md').write_text(project_map, encoding='utf-8')
+    (MAP_DIR / 'PROJECT_MAP.md').write_text(redact_secrets(project_map), encoding='utf-8')
 
     # 7. Update checksums
     save_checksums({'input_hash': checksum, 'generated_at': datetime.now().isoformat(), 'route_count': len(routes), 'model_count': len(models)})

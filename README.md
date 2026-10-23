@@ -37,7 +37,7 @@ A 19-section project map, split into focused files so the AI loads only what's r
 |---------|-----------------|
 | `01-vocabulary.md` | Plain-English → exact file path mapping |
 | `02-service-topology.md` | How your services connect |
-| `03-environment.md` | Env vars (secrets redacted) |
+| `03-environment.md` | Env var names from env files and code (never values) |
 | `04-api-routes.md` | Every route with method, path, handler |
 | `05-data-models.md` | Models and their fields |
 | `06-schemas.md` | Validation schemas (Pydantic, Zod, etc.) |
@@ -145,7 +145,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for the full 2.0.0 release notes, breaking-ch
 1. Checks for Python ≥ 3.8 (installs if missing)
 2. Detects your stack (language, framework, database, ORM, auth, infra)
 3. Runs `generate.py` → grades with `grader.py` (iterates up to 3× until 90%+ quality)
-4. Renders your developer skill and rules files
+4. Renders your developer skill and rules files, including three standards rules written once (see [Standards Rules](#standards-rules))
 5. Installs the pre-commit hook (auto-regenerates map on source file changes; checks auto-loaded context when `CLAUDE.md` or `.claude/rules/` changes)
 6. Updates `CLAUDE.md` with a project map pointer
 7. Prints a full quality report
@@ -227,6 +227,20 @@ Entries follow a simple format: symptom → cause → fix. This is the anti-drif
 
 ---
 
+## Standards Rules
+
+`init` also writes three rules into `.claude/rules/`, loaded every session:
+
+| File | Says |
+|------|------|
+| `git-workflow.md` | Branch before any change; never push or merge the default branch without explicit permission; branch → PR → **wait**; sync the default branch at session start and after merges; never `--no-verify` |
+| `secrets-management.md` | No hardcoded URLs, passwords, keys, tokens or connection strings; all of them go in the root `.env` (or wherever the repo already keeps it, e.g. `structure.toml`'s `env_file`); only `.env.example` is committed |
+| `dependency-versions.md` | Latest stable version of everything (newest LTS where one exists), looked up, not remembered; the only exception is a version that was tried and failed, pinned with a recorded reason |
+
+Each is written **once** and then belongs to the repo: re-running the installer never overwrites it. A rule is skipped entirely when the repo already has one on the same topic (an existing `secrets.md` means no `secrets-management.md`). The default branch is read from `origin/HEAD`, falling back to `main` (or `master` when that is the only branch).
+
+---
+
 ## Auto-loaded Context Check *(2.5.0+)*
 
 Everything in `CLAUDE.md` and `.claude/rules/` loads into every session, and past Claude Code's 150k-char limit rules stop binding silently. When those files are staged, the pre-commit hook runs `context-check.py` and blocks the commit if:
@@ -286,7 +300,10 @@ Or ask Claude to *"set up the repo structure"*. The `structure-bootstrap` skill 
 ├── templates/structure/         # Layouts: single, monorepo, multi-repo
 ├── rules/
 │   ├── project-vocabulary.md    # Auto-loaded every session
-│   └── operational-runbook.md   # Auto-loaded every session
+│   ├── operational-runbook.md   # Auto-loaded every session
+│   ├── git-workflow.md          # Standards rules: written once, yours to edit
+│   ├── secrets-management.md
+│   └── dependency-versions.md
 └── skills/
     └── <project>-developer-skill/
         └── SKILL.md
