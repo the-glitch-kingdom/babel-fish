@@ -1,1 +1,11 @@
-{}
+{
+  "latest": {
+    "targets": [
+      ".planning/init-rules-and-secret-safe-map/task_plan.md"
+    ],
+    "score": 20.0,
+    "count": 20,
+    "last_seen": "2026-10-22",
+    "source": "session-mined"
+  }
+}

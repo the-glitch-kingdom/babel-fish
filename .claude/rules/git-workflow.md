@@ -33,3 +33,13 @@
 - The description says what changed, why, and how it was tested, with real test output.
 - After opening, report the link and wait. Never merge your own PR unless told to.
 - Once it is merged: sync `main` (rule 3) and delete the branch.
+
+## Implementing a persistent-planning plan
+
+When you implement a plan from `.planning/`:
+
+1. **Sync `main` first** (rule 3), then cut one branch for the whole plan.
+2. **Implement the plan through to completion.** Work every phase in order without stopping to
+   ask between them; stop only when blocked or when a decision belongs to the user.
+3. **Commit at the end of each phase**, once its checks pass: one commit per phase, naming the phase.
+4. **Finish with a single PR** for the whole plan, then stop and wait (rule 2). Never a PR per phase.

@@ -686,6 +686,7 @@ def test_install_writes_standards_rules_once(tmp):
     assert not (rules / "secrets-management.md").exists(), "a similar rule exists; must not add a second"
     git = (rules / "git-workflow.md").read_text()
     assert "{{" not in git and "merge to `main` without explicit permission" in git, git[:400]
+    assert "Finish with a single PR" in git, "plan workflow section missing"
     assert "LTS" in (rules / "dependency-versions.md").read_text()
     (rules / "git-workflow.md").write_text("# edited\n")
     r = subprocess.run(install, capture_output=True, text=True)

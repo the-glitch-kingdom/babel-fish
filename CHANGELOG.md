@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Plan workflow in `git-workflow.md`.** When implementing a persistent-planning plan:
+  sync the default branch, implement every phase through to completion, commit at the
+  end of each phase, finish with a single PR. New installs only; an existing
+  `git-workflow.md` is never overwritten, so add the section by hand there.
+
 ## [2.7.0] - 2026-10-22
 
 ### Security

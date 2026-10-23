@@ -233,7 +233,7 @@ Entries follow a simple format: symptom → cause → fix. This is the anti-drif
 
 | File | Says |
 |------|------|
-| `git-workflow.md` | Branch before any change; never push or merge the default branch without explicit permission; branch → PR → **wait**; sync the default branch at session start and after merges; never `--no-verify` |
+| `git-workflow.md` | Branch before any change; never push or merge the default branch without explicit permission; branch → PR → **wait**; sync the default branch at session start and after merges; never `--no-verify`; a persistent-planning plan runs start to finish on one branch, a commit per phase, one PR |
 | `secrets-management.md` | No hardcoded URLs, passwords, keys, tokens or connection strings; all of them go in the root `.env` (or wherever the repo already keeps it, e.g. `structure.toml`'s `env_file`); only `.env.example` is committed |
 | `dependency-versions.md` | Latest stable version of everything (newest LTS where one exists), looked up, not remembered; the only exception is a version that was tried and failed, pinned with a recorded reason |
 
