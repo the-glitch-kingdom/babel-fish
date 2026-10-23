@@ -408,7 +408,8 @@ if echo "$STAGED_FILES" | grep -qE "$EXTENSIONS_PATTERN" 2>/dev/null; then
             echo "[codebase-mapper] Regenerating project map..."
             if $PYTHON "$MAP_SCRIPT" 2>/dev/null; then
                 git add .claude/project-map/PROJECT_MAP.md .claude/project-map/checksums.json \
-                        .claude/project-map/sections/*.md .claude/project-map/learned-vocabulary.json 2>/dev/null || true
+                        .claude/project-map/sections/*.md .claude/project-map/learned-vocabulary.json \
+                        .claude/project-map/glossary.json 2>/dev/null || true
             fi
         fi
     fi
@@ -467,6 +468,11 @@ SNIPPET
     if ! grep -q 'Codebase Mapper' "$pre_commit" 2>/dev/null; then
         { echo ""; echo "$hook_snippet"; } >> "$pre_commit"
         ok "Added Codebase Mapper to pre-commit hook"
+    elif ! grep -q 'project-map/glossary.json' "$pre_commit"; then
+        # Hooks installed before #29 never staged glossary.json; cat keeps the hook's mode.
+        sed -e 's|learned-vocabulary.json 2>/dev/null|learned-vocabulary.json .claude/project-map/glossary.json 2>/dev/null|' \
+            "$pre_commit" > "$pre_commit.tmp" && cat "$pre_commit.tmp" > "$pre_commit" && rm -f "$pre_commit.tmp"
+        ok "Codebase Mapper now stages glossary.json"
     else
         ok "pre-commit hook already contains Codebase Mapper snippet"
     fi
