@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -652,12 +653,16 @@ def test_skill_only_names_flags_and_paths_that_exist():
 
 # ── hook + installer ─────────────────────────────────────────────────────────
 
-def _block(text: str) -> str:
-    return text[text.index("# ── Structure Check"):text.index("# ── End Structure Check")]
+def _block(text: str, name: str = "Structure Check") -> str:
+    return text[text.index(f"# ── {name}"):text.index(f"# ── End {name}")]
 
 
 def test_installer_writes_the_same_hook_block():
-    assert _block((REPO / ".githooks/pre-commit").read_text()) == _block((REPO / ".claude/install.sh").read_text())
+    hook, installer = (REPO / ".githooks/pre-commit").read_text(), (REPO / ".claude/install.sh").read_text()
+    assert _block(hook) == _block(installer)
+    # Mapper block drifted once: this repo's hook staged glossary.json, installed ones never did (#29).
+    # The installer holds that block in a single-quoted string, so its quotes are escaped as '"'"'.
+    assert _block(hook, "Codebase Mapper") == _block(installer, "Codebase Mapper").replace("'\"'\"'", "'")
 
 
 def test_install_copies_the_check_and_never_touches_the_manifest(tmp):
@@ -724,6 +729,35 @@ def test_installer_upgrades_a_hook_from_before_the_structure_check(tmp):
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
     hook = (root / ".githooks/pre-commit").read_text()
     assert hook.count("# ── Structure Check") == 1 and hook.count("# ── Context Check") == 1, hook
+
+
+def test_installer_upgrades_a_hook_that_never_staged_the_glossary(tmp):
+    """#29: an installed hook regenerated glossary.json but left it out of the commit."""
+    root = make_repo(tmp / "p", {"README.md": "x"}, manifest=None)
+    current = (REPO / ".githooks/pre-commit").read_text()
+    old = current.replace(" \\\n                        .claude/project-map/glossary.json 2>/dev/null", " 2>/dev/null")
+    assert "glossary.json" not in old
+    (root / ".githooks").mkdir()
+    (root / ".githooks/pre-commit").write_text(old)
+    (root / ".githooks/pre-commit").chmod(0o755)
+    install = ["bash", str(REPO / ".claude/install.sh"), str(root)]
+    for _ in range(2):  # a second run must leave the patched line alone
+        r = subprocess.run(install, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    hook = root / ".githooks/pre-commit"
+    assert hook.read_text().count("glossary.json") == 1 and os.access(hook, os.X_OK), hook.read_text()
+
+    git = GIT + ["-c", "core.hooksPath=.githooks"]
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    subprocess.run(git + ["commit", "-qm", "install"], cwd=root, check=True, capture_output=True)
+    (root / "app.py").write_text("def deals_page():\n    pass\n")
+    subprocess.run(["git", "add", "app.py"], cwd=root, check=True)
+    r = subprocess.run(git + ["commit", "-qm", "code"], cwd=root, capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "codebase-mapper" in r.stdout + r.stderr, "hook never regenerated the map"
+    dirty = subprocess.run(["git", "status", "--porcelain", ".claude/project-map"], cwd=root,
+                           capture_output=True, text=True).stdout
+    assert dirty == "", f"hook regenerated but left map files out of the commit:\n{dirty}"
 
 
 def test_submodules_are_paths_like_any_other(tmp):

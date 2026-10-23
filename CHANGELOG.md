@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- **The installed pre-commit hook now stages `glossary.json` (#29).** It
+  regenerated the glossary on every map rebuild but left it out of the commit, so
+  repos carried a modified `glossary.json` after each one and the committed copy
+  went stale, against what the glossary contract promises. Re-running the
+  installer adds the file to an existing hook's `git add` line.
+
 ## [2.7.0] - 2026-10-22
 
 ### Security
