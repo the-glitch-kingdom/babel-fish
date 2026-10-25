@@ -3,7 +3,7 @@ title: Standards Registry
 tier: reference
 domains: [standards]
 status: active
-last_updated: '2026-10-23'
+last_updated: '2026-10-25'
 version: '1.0.0'
 purpose: Quick reference for standards documentation
 ---
@@ -27,8 +27,8 @@ purpose: Quick reference for standards documentation
 
 ## Recently Updated
 
+- [Auto-loaded context check](auto-loaded-context-check.md) - 2026-10-25
 - [Repo structure check](repo-structure-check.md) - 2026-09-30
-- [Auto-loaded context check](auto-loaded-context-check.md) - 2026-09-25
 
 ## By Status
 
@@ -50,4 +50,4 @@ purpose: Quick reference for standards documentation
 
 ---
 
-*Last updated: 2026-10-23*
+*Last updated: 2026-10-25*

@@ -3,7 +3,7 @@ title: Agents Registry
 tier: reference
 domains: [agents]
 status: active
-last_updated: '2026-10-23'
+last_updated: '2026-10-25'
 version: '1.0.0'
 purpose: Quick reference for agents documentation
 ---
@@ -35,4 +35,4 @@ purpose: Quick reference for agents documentation
 
 ---
 
-*Last updated: 2026-10-23*
+*Last updated: 2026-10-25*

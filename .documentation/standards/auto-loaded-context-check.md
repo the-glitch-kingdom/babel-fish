@@ -8,8 +8,8 @@ audience:
 tags:
   - python
 status: active
-last_updated: 2026-09-25
-version: 1.0.0
+last_updated: 2026-10-25
+version: 1.1.0
 purpose: Documentation for auto-loaded context check
 estimated_read_time: 1 minute
 word_count: 162
@@ -38,8 +38,10 @@ upstreamed from glitch-stock-trading-rig, whose auto-loaded files had reached
 | Rule lines | **off** — `--map-style` | a rules-file bullet is not `` - ALWAYS\|NEVER <rule> — <why> → `doc` `` |
 
 **Files counted:** `CLAUDE.md`, `CLAUDE.local.md`, `.claude/CLAUDE.md`, and
-`.claude/rules/**/*.md`. Rules with `paths:` frontmatter load lazily but are
-counted anyway — over-counting errs toward the budget, not past the limit.
+`.claude/rules/**/*.md`. A rule with `paths:` frontmatter loads only when Claude
+reads or edits a matching file, so it is listed under "path-scoped" and left out of
+the budget total; its pointers are still checked. A `paths:` key counts even if the
+YAML around it is broken, though Claude Code would then load the rule at launch.
 
 **Pointers recognised:**
 

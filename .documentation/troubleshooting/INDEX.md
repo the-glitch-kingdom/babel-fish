@@ -3,7 +3,7 @@ title: Troubleshooting Documentation Index
 tier: reference
 domains: [troubleshooting]
 status: active
-last_updated: '2026-10-23'
+last_updated: '2026-10-25'
 version: '1.0.0'
 purpose: Complete listing of troubleshooting documentation
 ---
@@ -41,4 +41,4 @@ This domain covers: troubleshooting, troubleshoot, debug, debugging, issue, issu
 
 ---
 
-*Last updated: 2026-10-23*
+*Last updated: 2026-10-25*

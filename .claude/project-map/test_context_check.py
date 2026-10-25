@@ -64,6 +64,24 @@ def test_budget_counts_nested_rules_and_dot_claude_claude_md(tmp):
     assert ".claude/rules/sub/deep.md" in r.stdout and ".claude/CLAUDE.md" in r.stdout
 
 
+def test_path_scoped_rule_is_left_out_of_the_budget(tmp):
+    scoped = '---\npaths:\n  - "**/Dockerfile"\n---\n\n' + "d" * 2_000
+    make_project(tmp, rules={"docker.md": scoped, "fm.md": "---\nname: x\n---\n" + "f" * 600})
+    r = check(tmp, "--budget", "1000")
+    assert r.returncode == 0, r.stdout
+    assert "path-scoped" in r.stdout and ".claude/rules/docker.md" in r.stdout, r.stdout
+    # Frontmatter without `paths:` loads at launch, so it still counts.
+    (tmp / ".claude/rules/fm.md").write_text("---\nname: x\n---\n" + "f" * 1_200)
+    r = check(tmp, "--budget", "1000")
+    assert r.returncode == 1 and "FAIL  auto-loaded context" in r.stdout, r.stdout
+
+
+def test_path_scoped_rule_pointers_are_still_checked(tmp):
+    make_project(tmp, rules={"d.md": '---\npaths: "**/*.yml"\n---\n- see → `.documentation/gone.md`\n'})
+    r = check(tmp)
+    assert r.returncode == 1 and ".documentation/gone.md" in r.stdout, r.stdout
+
+
 def test_warn_only_exits_zero(tmp):
     r = check(make_project(tmp, rules={"huge.md": "x" * 2_000}), "--budget", "1000", "--warn-only")
     assert r.returncode == 0 and "FAIL" in r.stdout, r.stdout

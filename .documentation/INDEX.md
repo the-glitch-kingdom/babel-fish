@@ -3,7 +3,7 @@ title: Documentation Index
 tier: reference
 domains: [root]
 status: active
-last_updated: '2026-10-23'
+last_updated: '2026-10-25'
 version: '1.0.0'
 purpose: Navigation hub for all documentation
 ---
@@ -163,7 +163,7 @@ purpose: Navigation hub for all documentation
 
 | Document | Tier | Status | Updated |
 |----------|------|--------|----------|
-| [Auto-loaded context check](standards/auto-loaded-context-check.md) | standard | active | 2026-09-25 |
+| [Auto-loaded context check](standards/auto-loaded-context-check.md) | standard | active | 2026-10-25 |
 | [Repo structure check](standards/repo-structure-check.md) | standard | active | 2026-09-30 |
 
 ---
@@ -204,6 +204,6 @@ purpose: Navigation hub for all documentation
 
 ## Maintenance
 
-- **Last generated:** 2026-10-23
+- **Last generated:** 2026-10-25
 - **Run maintenance:** `npx hit-em-with-the-docs maintain`
 - **Regenerate index:** `npx hit-em-with-the-docs index`

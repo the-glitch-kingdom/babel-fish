@@ -3,7 +3,7 @@ title: Architecture Registry
 tier: reference
 domains: [architecture]
 status: active
-last_updated: '2026-10-23'
+last_updated: '2026-10-25'
 version: '1.0.0'
 purpose: Quick reference for architecture documentation
 ---
@@ -52,4 +52,4 @@ purpose: Quick reference for architecture documentation
 
 ---
 
-*Last updated: 2026-10-23*
+*Last updated: 2026-10-25*

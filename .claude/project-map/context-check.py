@@ -4,11 +4,13 @@ context-check.py — Babel Fish
 Keeps the files Claude Code auto-loads at session start small and pointing at
 things that exist (#20).
 
-`CLAUDE.md` and every `.claude/rules/*.md` load into every session. Past the
+`CLAUDE.md` and every `.claude/rules/*.md` without `paths:` frontmatter load into
+every session (a rule with `paths:` loads only once Claude touches a matching file). Past the
 harness limit (150k chars) rules stop binding and nothing reports it; before
 that, growth is one paragraph at a time and nobody sees the total. Three checks:
 
 1. BUDGET    — total chars under --budget (default 60k, well under the limit).
+               Path-scoped rules are listed but left out of the total.
 2. POINTERS  — every `→ `path``, backticked `.documentation/…md` path and
                relative markdown link names a file that exists. hewtd link-checks
                only INSIDE `.documentation/`, so archiving or renaming a doc a
@@ -46,6 +48,7 @@ DOC_PATH_RE = re.compile(r"`(\.documentation/[^`\s*]+?\.md)(?:#[^`]*)?`")
 MD_LINK_RE = re.compile(r"\]\(([^)\s]+)\)")
 FENCE_RE = re.compile(r"^```.*?^```", re.MULTILINE | re.DOTALL)
 RULE_RE = re.compile(r"- (ALWAYS|NEVER)\b")
+FRONTMATTER_RE = re.compile(r"\A---\r?\n(.*?)\r?\n---\r?\n", re.DOTALL)
 
 
 def configure_paths(project_root: Path) -> None:
@@ -55,13 +58,19 @@ def configure_paths(project_root: Path) -> None:
 
 
 def loaded() -> dict[str, str]:
-    """-> {relpath: text} for every file Claude Code loads at session start."""
+    """-> {relpath: text} for every file Claude Code may auto-load, path-scoped rules included."""
     paths = [PROJECT_ROOT / n for n in ("CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md")]
-    # ponytail: rules with `paths:` frontmatter load lazily but are counted anyway —
-    # over-counting errs toward the budget, not past the limit.
     paths += sorted((PROJECT_ROOT / ".claude" / "rules").rglob("*.md"))
     return {p.relative_to(PROJECT_ROOT).as_posix(): p.read_text(encoding="utf-8", errors="replace")
             for p in paths if p.is_file()}
+
+
+def path_scoped(text: str) -> bool:
+    """A rule with `paths:` frontmatter loads only when Claude touches a matching file."""
+    # shortcut: a `paths:` key counts even if the YAML around it is broken (Claude Code
+    # then loads the rule at launch); parse it properly if a repo ever hits that.
+    m = FRONTMATTER_RE.match(text)
+    return bool(m and re.search(r"^paths:", m.group(1), re.MULTILINE))
 
 
 def bullets(text: str) -> list[str]:
@@ -105,14 +114,22 @@ def run(budget: int, map_style: bool, descriptive: set[str]) -> int:
         fails += not ok
 
     files = loaded()
-    total = sum(len(t) for t in files.values())
+    scoped = {k for k, t in files.items() if k.startswith(".claude/rules/") and path_scoped(t)}
+    total = sum(len(t) for k, t in files.items() if k not in scoped)
 
     print("\nthe budget")
     check(f"auto-loaded context is under {budget:,} chars", total <= budget,
           f"{total:,} -- move detail into .documentation/ and leave one line pointing at it")
-    for k, t in sorted(files.items(), key=lambda kv: -len(kv[1])):
-        print(f"        {len(t):>7,}  {k}")
+    ranked = sorted(files.items(), key=lambda kv: -len(kv[1]))
+    for k, t in ranked:
+        if k not in scoped:
+            print(f"        {len(t):>7,}  {k}")
     print(f"        {total:>7,}  total ({total / HARNESS_LIMIT:.0%} of the {HARNESS_LIMIT:,} harness limit)")
+    if scoped:
+        print("      path-scoped -- load only with matching files, not in the total:")
+        for k, t in ranked:
+            if k in scoped:
+                print(f"        {len(t):>7,}  {k}")
 
     print("\nevery pointer resolves")
     for k, t in files.items():
