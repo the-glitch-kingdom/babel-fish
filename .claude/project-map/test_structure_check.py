@@ -690,10 +690,12 @@ def test_install_writes_standards_rules_once(tmp):
     assert (rules / "secrets.md").read_text() == "# ours\n"
     assert not (rules / "secrets-management.md").exists(), "a similar rule exists; must not add a second"
     git = (rules / "git-workflow.md").read_text()
-    assert "{{" not in git and "merge to `main` without explicit permission" in git, git[:400]
+    assert "{{" not in git and "merge to `main`" in git and "--ff-only origin/main" in git, git[:400]
     assert "LTS" in (rules / "dependency-versions.md").read_text()
     docker = (rules / "docker-volumes.md").read_text()
     assert "{{" not in docker and "named volume" in docker and "infra/docker/<service>/" in docker, docker[:400]
+    # Path-scoped: frontmatter must survive rendering, or the rule loads every session.
+    assert docker.startswith("---\npaths:\n") and (rules / "dependency-versions.md").read_text().startswith("---\npaths:\n")
     layout = (rules / "repo-structure.md").read_text()
     assert "{{" not in layout and "structure-check.py --detect" in layout, layout[:400]
     (rules / "git-workflow.md").write_text("# edited\n")

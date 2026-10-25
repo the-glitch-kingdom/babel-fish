@@ -3,7 +3,7 @@ title: API Registry
 tier: reference
 domains: [api]
 status: active
-last_updated: '2026-10-23'
+last_updated: '2026-10-25'
 version: '1.0.0'
 purpose: Quick reference for api documentation
 ---
@@ -50,4 +50,4 @@ purpose: Quick reference for api documentation
 
 ---
 
-*Last updated: 2026-10-23*
+*Last updated: 2026-10-25*

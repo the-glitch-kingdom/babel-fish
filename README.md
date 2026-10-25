@@ -229,7 +229,7 @@ Entries follow a simple format: symptom → cause → fix. This is the anti-drif
 
 ## Standards Rules
 
-`init` also writes five rules into `.claude/rules/`, loaded every session:
+`init` also writes five rules into `.claude/rules/`. Three load every session; `dependency-versions.md` and `docker-volumes.md` carry `paths:` frontmatter, so Claude Code loads them only when Claude works with a manifest, Dockerfile, compose file or CI workflow:
 
 | File | Says |
 |------|------|

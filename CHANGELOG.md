@@ -23,6 +23,18 @@ All notable changes to this project will be documented in this file.
 - **`infra/docker/` in every structure layout** (single, monorepo, multi-repo):
   entrypoint and init scripts, mounted config and certs, per-service Dockerfiles,
   one folder per service. `infra/compose/` holds only YAML, so these had no home.
+### Changed
+
+- **`dependency-versions.md` and `docker-volumes.md` are path-scoped.** Their
+  `paths:` frontmatter makes Claude Code load them only when Claude works with a
+  manifest, lockfile-adjacent version file, Dockerfile, compose file or CI workflow,
+  instead of every session.
+- **The five standards rules are trimmed** to the rules themselves (about 9.1k →
+  6.2k chars, of which 3.7k now loads every session). Nothing a rule required was
+  dropped; repeated sections and explanations were.
+- **`context-check.py` leaves path-scoped rules out of the budget.** It lists them
+  separately and still checks their pointers. Before, it counted every rule as
+  loaded at launch.
 
 ## [2.7.1] - 2026-10-23
 

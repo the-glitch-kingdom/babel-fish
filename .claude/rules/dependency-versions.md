@@ -1,23 +1,25 @@
+---
+paths:
+  - "**/package.json"
+  - "**/{requirements*.txt,pyproject.toml,Pipfile,setup.cfg}"
+  - "**/{go.mod,Cargo.toml,Gemfile,composer.json,pom.xml,build.gradle,build.gradle.kts,*.csproj}"
+  - "**/{.nvmrc,.node-version,.python-version,.tool-versions,rust-toolchain.toml}"
+  - "**/Dockerfile*"
+  - "**/*compose*.{yml,yaml}"
+  - ".github/workflows/**"
+---
+
 # babel-fish — Dependency Versions
 
-> Auto-loaded every session. Written once by the babel-fish installer and never overwritten:
-> edit it to fit this repo.
+> Written once by babel-fish; yours to edit.
 
-## Hard rules
-
-1. **ALWAYS use the latest stable version** of every package, runtime, tool, container image, CI
-   action and service. Where a project publishes an LTS line (Node, Java, Ubuntu, …) that means the
-   newest **LTS**; everywhere else, the newest stable release.
-2. **NEVER use a pre-release**: alpha, beta, rc, nightly, canary, `next`, `dev` or `latest` tags
-   that point at one.
-3. **Look the version up; never trust memory** or an old example. Check the registry or the release
-   page at the moment you add or bump it (`npm view <pkg> version`, `pip index versions <pkg>`,
-   `go list -m -versions <mod>`, the project's GitHub releases).
-4. **The only exception is a newer version that was tried and failed** (incompatible, broken build,
-   failing tests). Then pin to the newest version that works and record it in **both** places:
-   - a one-line comment at the pin: what broke, the failing version, the date;
-   - an entry under Known Issues in `.claude/rules/operational-runbook.md`.
-
-   A pin without that record is not an exception, it is drift: bump it.
-5. **Recheck a recorded pin whenever you touch that dependency.** If the newest version now works,
-   drop the pin, the comment and the runbook entry in the same change.
+1. **ALWAYS use the latest stable version** of every package, runtime, tool, image, CI action and
+   service; where an LTS line exists (Node, Java, Ubuntu, …), the newest LTS. NEVER a pre-release
+   (alpha, beta, rc, nightly, canary, `next`).
+2. **Look it up; never trust memory**: `npm view <pkg> version`, `pip index versions <pkg>`,
+   `go list -m -versions <mod>`, or the release page.
+3. **The only exception is a newer version that was tried and failed.** Pin the newest one that
+   works and record it twice: a comment at the pin (what broke, the version, the date) and an entry
+   under Known Issues in `.claude/rules/operational-runbook.md`. An unrecorded pin is drift: bump it.
+4. **Recheck a recorded pin whenever you touch that dependency**; once the newest works, drop the
+   pin, the comment and the runbook entry together.
