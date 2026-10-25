@@ -40,6 +40,10 @@ purpose = "Compose files: base.yml shared, dev.yml for localhost, remote.yml for
 holds = ["*.yml", "*.yaml"]
 
 [[folder]]
+path = "infra/docker"
+purpose = "Files a container needs from the host or its build: per-service Dockerfiles, entrypoint and init scripts, service config (nginx.conf, certs); one folder per service, infra/docker/<service>/"
+
+[[folder]]
 path = "infra/env"
 purpose = "Env config: .env.example is the one template (every key, placeholders) and your local .env sits beside it, gitignored. Stg/prod values come from the secret manager or CI, never from files here; <env>/ holds only non-secret per-env deltas"
 holds = [".env.example", "README.md", "*/**"]

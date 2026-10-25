@@ -14,7 +14,7 @@
    gone and the old volume is left behind as an orphan.
 3. **A bind mount (`./host/path:/container/path`) only when functionality requires a host path**:
    - an entrypoint or init script the image runs from a mounted path
-     (`./db/init.sql:/docker-entrypoint-initdb.d/init.sql`);
+     (`../docker/db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro`);
    - a config file or certificate the host provides (`nginx.conf`, TLS certs);
    - source code mounted for live reload in development;
    - a host socket or device (`/var/run/docker.sock`);
@@ -22,5 +22,10 @@
 
    Each one carries a one-line comment saying which of these it is, and is `:ro` unless the
    container must write to it. If the file can be built into the image with `COPY` instead, do that.
-4. **NEVER run `docker compose down -v`, `docker volume rm` or `docker volume prune`** without
+4. **Docker files live under `infra/`** unless `.claude/structure.toml` says otherwise: compose files
+   in `infra/compose/`, and everything a container takes from the host (entrypoint and init
+   scripts, mounted config, certs, per-service Dockerfiles) in `infra/docker/<service>/`. Paths in a
+   compose file resolve from the compose file's folder, so a mount from `infra/compose/base.yml`
+   reads `../docker/<service>/...`.
+5. **NEVER run `docker compose down -v`, `docker volume rm` or `docker volume prune`** without
    explicit permission. They delete named volumes, and with them the data.

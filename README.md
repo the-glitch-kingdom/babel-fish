@@ -229,14 +229,15 @@ Entries follow a simple format: symptom → cause → fix. This is the anti-drif
 
 ## Standards Rules
 
-`init` also writes four rules into `.claude/rules/`, loaded every session:
+`init` also writes five rules into `.claude/rules/`, loaded every session:
 
 | File | Says |
 |------|------|
 | `git-workflow.md` | Branch before any change; never push or merge the default branch without explicit permission; branch → PR → **wait**; sync the default branch at session start and after merges; never `--no-verify` |
 | `secrets-management.md` | No hardcoded URLs, passwords, keys, tokens or connection strings; all of them go in the root `.env` (or wherever the repo already keeps it, e.g. `structure.toml`'s `env_file`); only `.env.example` is committed |
 | `dependency-versions.md` | Latest stable version of everything (newest LTS where one exists), looked up, not remembered; the only exception is a version that was tried and failed, pinned with a recorded reason |
-| `docker-volumes.md` | Named volumes for anything a container stores; never anonymous volumes; a bind mount only when a host path is required (entrypoint/init scripts, host-provided config or certs, dev live reload, sockets), commented and `:ro`; never `down -v` / `volume rm` / `prune` without permission |
+| `docker-volumes.md` | Named volumes for anything a container stores; never anonymous volumes; a bind mount only when a host path is required (entrypoint/init scripts, host-provided config or certs, dev live reload, sockets), commented and `:ro`; never `down -v` / `volume rm` / `prune` without permission; Docker files under `infra/compose/` and `infra/docker/<service>/` |
+| `repo-structure.md` | Decide where a file belongs before creating it: follow `.claude/structure.toml` when there is one; otherwise suggest setting one up (`--detect`, `structure-bootstrap`) and use the default layout for anything the repo has no place for; no catch-all folders |
 
 Each is written **once** and then belongs to the repo: re-running the installer never overwrites it. A rule is skipped entirely when the repo already has one on the same topic (an existing `secrets.md` means no `secrets-management.md`). The default branch is read from `origin/HEAD`, falling back to `main` (or `master` when that is the only branch).
 
@@ -305,7 +306,8 @@ Or ask Claude to *"set up the repo structure"*. The `structure-bootstrap` skill 
 │   ├── git-workflow.md          # Standards rules: written once, yours to edit
 │   ├── secrets-management.md
 │   ├── dependency-versions.md
-│   └── docker-volumes.md
+│   ├── docker-volumes.md
+│   └── repo-structure.md
 └── skills/
     └── <project>-developer-skill/
         └── SKILL.md
