@@ -680,7 +680,7 @@ def test_install_copies_the_check_and_never_touches_the_manifest(tmp):
 
 
 def test_install_writes_standards_rules_once(tmp):
-    """git-workflow / secrets-management / dependency-versions: written once, never overwritten,
+    """git-workflow / secrets-management / dependency-versions / docker-volumes / repo-structure: written once, never overwritten,
     and skipped when the repo already has its own rule on that topic."""
     root = make_repo(tmp / "p", {"README.md": "x", ".claude/rules/secrets.md": "# ours\n"}, manifest=None)
     install = ["bash", str(REPO / ".claude/install.sh"), str(root)]
@@ -692,6 +692,10 @@ def test_install_writes_standards_rules_once(tmp):
     git = (rules / "git-workflow.md").read_text()
     assert "{{" not in git and "merge to `main` without explicit permission" in git, git[:400]
     assert "LTS" in (rules / "dependency-versions.md").read_text()
+    docker = (rules / "docker-volumes.md").read_text()
+    assert "{{" not in docker and "named volume" in docker and "infra/docker/<service>/" in docker, docker[:400]
+    layout = (rules / "repo-structure.md").read_text()
+    assert "{{" not in layout and "structure-check.py --detect" in layout, layout[:400]
     (rules / "git-workflow.md").write_text("# edited\n")
     r = subprocess.run(install, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]

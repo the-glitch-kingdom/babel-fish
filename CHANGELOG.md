@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **`docker-volumes.md` standards rule on init.** Named volumes for anything a
+  container stores; no anonymous volumes; a bind mount only when a host path is
+  required (entrypoint or init scripts, host-provided config or certificates, dev
+  live reload, sockets), each commented and read-only where possible; never
+  `docker compose down -v`, `docker volume rm` or `prune` without permission.
+  Written once like the other standards rules, and skipped when the repo already
+  has a rule about docker, containers or volumes. Docker files go under `infra/`:
+  compose files in `infra/compose/`, host files a container needs in
+  `infra/docker/<service>/`.
+- **`repo-structure.md` standards rule on init.** Decide where a file belongs
+  before creating it. With a `.claude/structure.toml`, follow it; without one,
+  suggest setting it up (`structure-check.py --detect`, then the
+  `structure-bootstrap` skill) and use the default layout for anything the repo
+  has no place for. No catch-all folders.
+- **`infra/docker/` in every structure layout** (single, monorepo, multi-repo):
+  entrypoint and init scripts, mounted config and certs, per-service Dockerfiles,
+  one folder per service. `infra/compose/` holds only YAML, so these had no home.
+
 ## [2.7.1] - 2026-10-23
 
 ### Fixed

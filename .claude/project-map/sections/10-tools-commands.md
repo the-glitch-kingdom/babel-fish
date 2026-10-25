@@ -6,6 +6,7 @@
 | `postinstall` | `npm run postinstall` | package.json |
 | `test` | `npm run test` | package.json |
 | `install.sh` | `bash install.sh` | shell |
+| `/semantic-first` | `/semantic-first` | skills |
 | `/babel-fish-developer-skill` | `/babel-fish-developer-skill` | skills |
 | `/policy` | `/policy` | commands |
 | `/relink` | `/relink` | commands |
