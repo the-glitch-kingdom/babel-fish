@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **`docker-volumes.md` standards rule on init.** Named volumes for anything a
+  container stores; no anonymous volumes; a bind mount only when a host path is
+  required (entrypoint or init scripts, host-provided config or certificates, dev
+  live reload, sockets), each commented and read-only where possible; never
+  `docker compose down -v`, `docker volume rm` or `prune` without permission.
+  Written once like the other standards rules, and skipped when the repo already
+  has a rule about docker, containers or volumes.
+
 ## [2.7.1] - 2026-10-23
 
 ### Fixed

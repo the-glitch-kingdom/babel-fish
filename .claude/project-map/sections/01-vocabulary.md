@@ -13,6 +13,8 @@
 | babel-fish-developer-skill | skill | skills/babel-fish-developer-skill/SKILL.md | Full-stack developer context for any project with Babel Fish installed. Provides instant access to project map, vocabula |
 | policy | command | commands/policy.md | Get or set the babel-fish update policy (auto \| nudge \| off) |
 | relink | command | commands/relink.md | Re-run the skill linker — refresh symlinks from node_modules into .claude/skills/ |
+| semantic first | skill | .claude/skills/semantic-first/SKILL.md | Route documentation lookups, internal procedure questions, repo architectural/vocabulary/convention questions, and resea |
+| semantic-first | skill | .claude/skills/semantic-first/SKILL.md | Route documentation lookups, internal procedure questions, repo architectural/vocabulary/convention questions, and resea |
 | status | command | commands/status.md | Show installed version, latest available version, current update policy, and hook registration state |
 | structure bootstrap | skill | skills/structure-bootstrap/SKILL.md | Set up, adopt or change a repo's structure manifest (.claude/structure.toml) — the approved folders, what each may hold, |
 | structure-bootstrap | skill | skills/structure-bootstrap/SKILL.md | Set up, adopt or change a repo's structure manifest (.claude/structure.toml) — the approved folders, what each may hold, |
