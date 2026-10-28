@@ -52,5 +52,8 @@ When you encounter a non-obvious operational issue, suggest adding it:
 > "This looks like operational knowledge worth documenting. Want me to add it
 > to the runbook? (Y/n)"
 
-If agreed, append a concise entry (symptom → cause → fix) to
-`.claude/rules/operational-runbook.md`.
+If agreed, write the detail in a doc and add only a one-line **pointer record**
+(symptom, fix, `→` path to the doc) to `.claude/rules/operational-runbook.md`; it
+loads every session. With hit-em-with-the-docs (`.documentation/` exists), a gotcha
+becomes a knowledge-base fact and a tool or procedure a domain doc, then
+`hewtd maintain`. Never record a secret or credential, only the variable's name.

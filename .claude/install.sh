@@ -284,33 +284,11 @@ _render_runbook() {
         return
     fi
 
-    if [ -f "$template" ]; then
-        sed -e "s|{{PROJECT_NAME}}|$name|g" "$template" > "$out"
-    else
-        cat > "$out" <<RUNBOOK
-# ${name} — Operational Runbook
-
-> Auto-loaded every session. Edit this file manually — NOT overwritten on regeneration.
-
-## Environment Differences
-
-| | Dev | Staging | Production |
-|---|---|---|---|
-| **URL** | | | |
-| **Database** | | | |
-
-## Known Issues & Workarounds
-
-_No known issues documented yet._
-
-## Key Commands
-
-| Command | What It Does |
-|---------|-------------|
-| \`python .claude/project-map/generate.py --force\` | Regenerate project map |
-| \`python .claude/project-map/grader.py\` | Grade map quality |
-RUNBOOK
+    if [ ! -f "$template" ]; then
+        warn "Template not found — skipping operational-runbook.md: $template"
+        return
     fi
+    sed -e "s|{{PROJECT_NAME}}|$name|g" "$template" > "$out"
     ok "Rendered: $out"
 }
 
