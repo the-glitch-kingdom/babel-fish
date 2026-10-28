@@ -12,8 +12,9 @@ All notable changes to this project will be documented in this file.
   installed, the detail is a domain doc (and a trap a knowledge-base fact), then
   `hewtd maintain`. Loaded every session, so it stays a list of pointers; updated
   in the same change as the tool; never holds secrets. Skipped when the repo
-  already has a rule about tools, a registry or integrations, so existing
-  hand-written registries are left alone. The developer skill points new tools at it.
+  already has a tool registry: that file is kept, and the template's "Adding a
+  tool" section (the pointer-record rules) is appended to it once. The developer
+  skill points new tools at it.
 
 ### Changed
 

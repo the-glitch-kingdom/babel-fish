@@ -135,7 +135,7 @@ KEY FILES AFTER INSTALL
   .claude/rules/docker-volumes.md           — Named volumes; bind mounts only when required (written once)
   .claude/rules/repo-structure.md           — Where files go; suggests a structure.toml (written once)
   .claude/rules/code-hygiene.md             — No dead code or scaffolding; lean tests in the test folder (written once)
-  .claude/rules/tool-registry.md            — One pointer record per tool; detail in docs (written once)
+  .claude/rules/tool-registry.md            — One pointer record per tool; detail in docs (written once, or its rules added to yours)
   .claude/skills/<slug>-developer-skill/    — Your developer skill
   .githooks/pre-commit                      — Regenerates map; checks auto-loaded context + structure
   .claude/templates/structure/*.toml        — Layout templates (single, monorepo, multi-repo)
@@ -301,12 +301,19 @@ _render_rule_once() {
     local rule="$3"
     local keywords="$4"
     local branch="$5"
+    local section="${6:-}"   # a heading: appended to an existing rule on the topic instead of skipping it
     local template="$TEMPLATES_DIR/$rule.md.template"
     local similar
 
     similar="$(ls "$rules_dir" 2>/dev/null | grep -E '\.md$' | grep -iE "$keywords" | head -1 || true)"
     if [ -n "$similar" ]; then
-        ok "Rule on this topic already exists ($similar) — skipping $rule.md"
+        if [ -n "$section" ] && [ -f "$template" ] && ! grep -qxF "$section" "$rules_dir/$similar"; then
+            # The section runs to the template's next "## " heading, which sed '$d' drops.
+            { echo ""; sed -n "/^$section\$/,/^## /p" "$template" | sed '$d'; } >> "$rules_dir/$similar"
+            ok "Added \"$section\" to the existing $similar"
+        else
+            ok "Rule on this topic already exists ($similar) — skipping $rule.md"
+        fi
         return
     fi
     if [ ! -f "$template" ]; then
@@ -568,7 +575,7 @@ if $DRY_RUN; then
     _dry "write $CLAUDE_DIR/project-map/reports/install-report.md"
     _dry "write $CLAUDE_DIR/rules/project-vocabulary.md"
     _dry "write $CLAUDE_DIR/rules/operational-runbook.md"
-    _dry "write $CLAUDE_DIR/rules/git-workflow.md, secrets-management.md, dependency-versions.md, docker-volumes.md, repo-structure.md, code-hygiene.md, tool-registry.md  (each skipped if a rule on that topic exists)"
+    _dry "write $CLAUDE_DIR/rules/git-workflow.md, secrets-management.md, dependency-versions.md, docker-volumes.md, repo-structure.md, code-hygiene.md, tool-registry.md  (each skipped if a rule on that topic exists; an existing tool registry gets the pointer-record section instead)"
     _dry "write $CLAUDE_DIR/skills/<project>-developer-skill/SKILL.md"
     _dry "write .githooks/pre-commit"
     _dry "run   git config core.hooksPath .githooks"
@@ -716,7 +723,7 @@ _render_rule_once "$NAME" "$RULES_DIR" dependency-versions 'depend|version|packa
 _render_rule_once "$NAME" "$RULES_DIR" docker-volumes      'docker|container|volume'        "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" repo-structure      'structure|layout|folder'        "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" code-hygiene        'hygiene|dead|cleanup|clean-up'  "$DEFAULT_BRANCH"
-_render_rule_once "$NAME" "$RULES_DIR" tool-registry       'tool|registry|integration'      "$DEFAULT_BRANCH"
+_render_rule_once "$NAME" "$RULES_DIR" tool-registry       'tool|registry'                  "$DEFAULT_BRANCH" '## Adding a tool'
 
 _render_skill     "$PROJECT_ROOT" "$NAME" "$SLUG" "$LANG" "$FRAMEWORK" "$SKILLS_DIR"
 

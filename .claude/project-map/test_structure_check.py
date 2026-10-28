@@ -715,6 +715,19 @@ def test_install_writes_standards_rules_once(tmp):
     assert (rules / "git-workflow.md").read_text() == "# edited\n", "re-install overwrote a rule the repo owns"
 
 
+def test_install_adds_the_pointer_rule_to_an_existing_tool_registry(tmp):
+    """A repo's own registry is kept and gets the "Adding a tool" section once, not a second file."""
+    ours = "# Our tools\n\n- **`gh`**: the only GitHub path.\n"
+    root = make_repo(tmp / "p", {"README.md": "x", ".claude/rules/tool-registry.md": ours}, manifest=None)
+    install = ["bash", str(REPO / ".claude/install.sh"), str(root)]
+    for _ in range(2):  # a second run must not append it again
+        r = subprocess.run(install, capture_output=True, text=True)
+        assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
+    reg = (root / ".claude/rules/tool-registry.md").read_text()
+    assert reg.startswith(ours) and reg.count("## Adding a tool") == 1, reg
+    assert "pointer record" in reg and "## Tools" not in reg and "None recorded" not in reg, reg
+
+
 def test_install_fills_in_master_when_that_is_the_branch(tmp):
     root = tmp / "m"
     subprocess.run(["git", "init", "-q", "-b", "master", str(root)], check=True)
