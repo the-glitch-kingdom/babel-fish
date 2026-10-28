@@ -223,7 +223,7 @@ python .claude/project-map/mine-sessions.py
 
 > "This looks like operational knowledge worth documenting. Want me to add it to the runbook? (Y/n)"
 
-Because it loads every session, entries are **pointer records**: the symptom, a one-line fix, and `→` a pointer to the doc holding the detail. With hit-em-with-the-docs installed, a gotcha becomes a knowledge-base fact and a tool or procedure a domain doc (then `hewtd maintain`); the runbook keeps only the pointer. It never holds secrets or credentials, only variable names. This is the anti-drift mechanism — knowledge that can't be derived from code lives here, without bloating session startup.
+A repo that already has a runbook keeps it; the installer appends the template's "Adding an entry" section once instead. Because it loads every session, entries are **pointer records**: the symptom, a one-line fix, and `→` a pointer to the doc holding the detail. With hit-em-with-the-docs installed, a gotcha becomes a knowledge-base fact and a tool or procedure a domain doc (then `hewtd maintain`); the runbook keeps only the pointer. It never holds secrets or credentials, only variable names. This is the anti-drift mechanism — knowledge that can't be derived from code lives here, without bloating session startup.
 
 ---
 

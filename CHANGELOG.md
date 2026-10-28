@@ -15,6 +15,11 @@ All notable changes to this project will be documented in this file.
   already has a tool registry: that file is kept, and the template's "Adding a
   tool" section (the pointer-record rules) is appended to it once. The developer
   skill points new tools at it.
+- **An existing runbook gets the pointer-record rules too.** Before, a repo with
+  an `operational-runbook.md` (or any rule named `*runbook*`) was left untouched
+  and never learned the pointer-record format; now the template's "Adding an
+  entry" section is appended once. The runbook renders through the same function
+  as the standards rules, and the separate `_render_runbook` is gone.
 
 ### Changed
 

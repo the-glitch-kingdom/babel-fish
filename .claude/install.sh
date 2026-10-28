@@ -128,7 +128,7 @@ KEY FILES AFTER INSTALL
   .claude/project-map/sections/05-*.md      — Data models
   .claude/project-map/reports/install-report.md — Quality report
   .claude/rules/project-vocabulary.md       — Auto-loaded every session
-  .claude/rules/operational-runbook.md      — Edit manually to grow over time
+  .claude/rules/operational-runbook.md      — Pointer records to docs (written once, or its rules added to yours)
   .claude/rules/git-workflow.md             — Branch / PR / wait rules (written once, yours to edit)
   .claude/rules/secrets-management.md       — No hardcoded secrets; everything in .env (written once)
   .claude/rules/dependency-versions.md      — Latest stable/LTS unless a recorded failure (written once)
@@ -271,25 +271,6 @@ _render_vocabulary() {
 | grade map | \`python .claude/project-map/grader.py\` |
 VOCAB
     fi
-    ok "Rendered: $out"
-}
-
-_render_runbook() {
-    local name="$2"
-    local rules_dir="$3"
-    local out="$rules_dir/operational-runbook.md"
-    local template="$TEMPLATES_DIR/operational-runbook.md.template"
-
-    if [ -f "$out" ]; then
-        ok "Runbook already exists — preserving: $out"
-        return
-    fi
-
-    if [ ! -f "$template" ]; then
-        warn "Template not found — skipping operational-runbook.md: $template"
-        return
-    fi
-    sed -e "s|{{PROJECT_NAME}}|$name|g" "$template" > "$out"
     ok "Rendered: $out"
 }
 
@@ -574,7 +555,7 @@ if $DRY_RUN; then
     _dry "write $CLAUDE_DIR/project-map/sections/01-vocabulary.md  (+ 18 more sections)"
     _dry "write $CLAUDE_DIR/project-map/reports/install-report.md"
     _dry "write $CLAUDE_DIR/rules/project-vocabulary.md"
-    _dry "write $CLAUDE_DIR/rules/operational-runbook.md"
+    _dry "write $CLAUDE_DIR/rules/operational-runbook.md  (an existing runbook gets the pointer-record section instead)"
     _dry "write $CLAUDE_DIR/rules/git-workflow.md, secrets-management.md, dependency-versions.md, docker-volumes.md, repo-structure.md, code-hygiene.md, tool-registry.md  (each skipped if a rule on that topic exists; an existing tool registry gets the pointer-record section instead)"
     _dry "write $CLAUDE_DIR/skills/<project>-developer-skill/SKILL.md"
     _dry "write .githooks/pre-commit"
@@ -707,7 +688,6 @@ SKILLS_DIR="$CLAUDE_DIR/skills/${SLUG}-developer-skill"
 mkdir -p "$RULES_DIR" "$SKILLS_DIR"
 
 _render_vocabulary "$PROJECT_ROOT" "$NAME" "$LANG" "$FRAMEWORK" "$RULES_DIR"
-_render_runbook    "$PROJECT_ROOT" "$NAME" "$RULES_DIR"
 
 DEFAULT_BRANCH="$(git -C "$PROJECT_ROOT" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || true)"
 DEFAULT_BRANCH="${DEFAULT_BRANCH#origin/}"
@@ -724,6 +704,7 @@ _render_rule_once "$NAME" "$RULES_DIR" docker-volumes      'docker|container|vol
 _render_rule_once "$NAME" "$RULES_DIR" repo-structure      'structure|layout|folder'        "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" code-hygiene        'hygiene|dead|cleanup|clean-up'  "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" tool-registry       'tool|registry'                  "$DEFAULT_BRANCH" '## Adding a tool'
+_render_rule_once "$NAME" "$RULES_DIR" operational-runbook 'runbook'                        "$DEFAULT_BRANCH" '## Adding an entry'
 
 _render_skill     "$PROJECT_ROOT" "$NAME" "$SLUG" "$LANG" "$FRAMEWORK" "$SKILLS_DIR"
 
