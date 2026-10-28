@@ -1,0 +1,24 @@
+---
+paths:
+  - "**/*.{py,ts,tsx,js,jsx,mjs,cjs,go,rs,java,kt,rb,php,cs,swift,sh}"
+---
+
+# babel-fish — Code Hygiene
+
+> Written once by babel-fish; yours to edit.
+
+1. **Remove dead code in the change that makes it dead**: unused functions, imports, files, flags
+   and config keys, commented-out blocks, unreachable branches. Git history keeps it.
+2. **Delete implementation scaffolding before committing**: debug prints and logging, repro
+   scripts, one-off harnesses, scratch files, and tests written only to get something working.
+3. **Keep tests lean.** Test what callers and users depend on, once: one test per behavior, plus
+   its edge cases and each fixed bug. NEVER test the language or framework, private helpers, or
+   the same path twice, and never mock the code under test. Extend an existing test before adding a file.
+4. **A test worth keeping lives in the test folder** (`tests/`, or where `.claude/structure.toml`
+   puts tests), is named for what it covers, and runs in the suite. Never in `src/`, the repo
+   root or a scratch folder.
+5. **Delete tests that no longer test anything**: tests of removed code, duplicates, skipped
+   tests nobody will fix, unused fixtures. A failing test is fixed, never skipped to go green;
+   delete it only when the behavior it covers is gone.
+6. **Dead code you didn't create** (e.g. `.claude/project-map/sections/18-dead-code.md`): check its
+   callers, then propose deleting it. Never delete it unasked inside an unrelated change.

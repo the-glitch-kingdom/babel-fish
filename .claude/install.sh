@@ -134,6 +134,7 @@ KEY FILES AFTER INSTALL
   .claude/rules/dependency-versions.md      — Latest stable/LTS unless a recorded failure (written once)
   .claude/rules/docker-volumes.md           — Named volumes; bind mounts only when required (written once)
   .claude/rules/repo-structure.md           — Where files go; suggests a structure.toml (written once)
+  .claude/rules/code-hygiene.md             — No dead code or scaffolding; lean tests in the test folder (written once)
   .claude/skills/<slug>-developer-skill/    — Your developer skill
   .githooks/pre-commit                      — Regenerates map; checks auto-loaded context + structure
   .claude/templates/structure/*.toml        — Layout templates (single, monorepo, multi-repo)
@@ -588,7 +589,7 @@ if $DRY_RUN; then
     _dry "write $CLAUDE_DIR/project-map/reports/install-report.md"
     _dry "write $CLAUDE_DIR/rules/project-vocabulary.md"
     _dry "write $CLAUDE_DIR/rules/operational-runbook.md"
-    _dry "write $CLAUDE_DIR/rules/git-workflow.md, secrets-management.md, dependency-versions.md, docker-volumes.md, repo-structure.md  (each skipped if a rule on that topic exists)"
+    _dry "write $CLAUDE_DIR/rules/git-workflow.md, secrets-management.md, dependency-versions.md, docker-volumes.md, repo-structure.md, code-hygiene.md  (each skipped if a rule on that topic exists)"
     _dry "write $CLAUDE_DIR/skills/<project>-developer-skill/SKILL.md"
     _dry "write .githooks/pre-commit"
     _dry "run   git config core.hooksPath .githooks"
@@ -735,6 +736,7 @@ _render_rule_once "$NAME" "$RULES_DIR" secrets-management  'secret|credential|en
 _render_rule_once "$NAME" "$RULES_DIR" dependency-versions 'depend|version|package|upgrade' "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" docker-volumes      'docker|container|volume'        "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" repo-structure      'structure|layout|folder'        "$DEFAULT_BRANCH"
+_render_rule_once "$NAME" "$RULES_DIR" code-hygiene        'hygiene|dead|cleanup|clean-up'  "$DEFAULT_BRANCH"
 
 _render_skill     "$PROJECT_ROOT" "$NAME" "$SLUG" "$LANG" "$FRAMEWORK" "$SKILLS_DIR"
 

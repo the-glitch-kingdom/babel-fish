@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **`code-hygiene.md` standards rule on init.** Remove dead code in the change
+  that makes it dead; delete debug output, repro scripts and scaffolding tests
+  before committing; keep tests lean (one per behavior, no duplicates, no tests of
+  the framework or private helpers); kept tests live in the test folder; delete
+  tests of removed code and never skip a failing test to go green; propose, rather
+  than silently delete, dead code you didn't create. Path-scoped to source files,
+  and skipped when the repo already has a rule about hygiene, dead code or cleanup.
+
 ## [2.8.0] - 2026-10-25
 
 ### Added
