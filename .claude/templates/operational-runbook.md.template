@@ -1,30 +1,42 @@
 # {{PROJECT_NAME}} — Operational Runbook
 
-> Auto-loaded every session. Contains operational knowledge that cannot be derived from code.
-> This file grows over time as the team discovers gotchas, quirks, and procedures.
-> **Edit this file manually** — it is NOT overwritten on regeneration.
+> Loaded every session, so it holds pointers, not detail. Written once by babel-fish; yours to edit.
+
+## Adding an entry
+
+Every entry is a **pointer record**: what you see, the one-line fix, and where the detail lives.
+
+```
+- **<symptom, tool or procedure>**: <one-line fix or rule>. → `<path to the doc>`
+```
+
+1. **The detail goes in a doc, not here.** If the repo uses hit-em-with-the-docs (it has a
+   `.documentation/` folder), write it the hewtd way: a gotcha is a fact under
+   `.documentation/knowledge-base/facts/` (tagged `gotcha`, with an `## Instead` section and a
+   `verify_command`), a tool or procedure is a doc in its domain folder. Then run `hewtd maintain`
+   and add the pointer record here. Without hewtd, use the repo's docs folder.
+2. **Inline only what has no doc yet**, in two or three lines, and move it out when it grows.
+3. **NEVER put a secret, credential or environment-specific value here.** Name the variable
+   (`DATABASE_URL`) and where its value lives, never the value.
 
 ## Environment Differences
 
-<!-- TODO: Document how dev/staging/prod differ (DB, deploy method, secrets, URLs) -->
+Names and places only: which variable, which platform, which secret manager.
 
 | | Dev | Staging | Production |
 |---|---|---|---|
-| **URL** | | | |
+| **URL (variable)** | | | |
 | **Database** | | | |
 | **Deploy** | | | |
-| **Secrets** | | | |
+| **Secrets live in** | | | |
 
 ## Known Issues & Workarounds
 
-<!-- This section fills in naturally. When you hit a non-obvious issue, add it here. -->
-<!-- Examples: "HMR doesn't work on WSL2", "port 6543 breaks migrations" -->
-
-_No known issues documented yet. When you encounter a non-obvious problem and its solution, add it here so future sessions don't re-discover it._
+_None yet._
 
 ## Deploy Procedures
 
-<!-- TODO: Document how to deploy to each environment -->
+_One pointer record per environment._
 
 ## Key Commands
 
@@ -34,7 +46,3 @@ _No known issues documented yet. When you encounter a non-obvious problem and it
 | `python .claude/project-map/grader.py` | Grade map quality (0-100%) |
 | `bash .githooks/install.sh` | (Re)install git hooks |
 | `bash .claude/install.sh` | Re-run full plugin installer |
-
-## Dev Credentials
-
-<!-- Add test/dev credentials here (NEVER production secrets) -->

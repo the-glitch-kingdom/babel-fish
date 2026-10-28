@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- **The runbook holds pointer records, not detail.** It loads every session, so
+  the template now asks for one line per entry (symptom, one-line fix, `→` doc
+  path). With hit-em-with-the-docs installed, the detail is written the hewtd way
+  (a gotcha as a knowledge-base fact, a tool or procedure as a domain doc, then
+  `hewtd maintain`). The developer skill's "Growing the Runbook" says the same.
+
+### Fixed
+
+- **The runbook template no longer asks for credentials.** Its "Dev Credentials"
+  section is gone, and the Environment Differences table names variables and
+  where values live, never the values, in line with `secrets-management.md`.
+  Existing runbooks are never overwritten: check them by hand.
+- Removed the installer's built-in fallback runbook, which only ran when the
+  shipped template was missing; it now warns and skips, like the standards rules.
+
 ## [2.9.0] - 2026-10-28
 
 ### Added

@@ -201,7 +201,3 @@ Full symptom table: [`.documentation/troubleshooting/structure-check-failures.md
 | `python .claude/project-map/structure-check.py` | Check files against `.claude/structure.toml` (`--detect` for repo facts, `--bootstrap` to start a manifest) |
 | `bash .githooks/install.sh` | (Re)install git hooks |
 | `bash .claude/install.sh` | Re-run full plugin installer |
-
-## Dev Credentials
-
-<!-- Add test/dev credentials here (NEVER production secrets) -->

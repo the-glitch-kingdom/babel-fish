@@ -700,6 +700,13 @@ def test_install_writes_standards_rules_once(tmp):
     assert "{{" not in layout and "structure-check.py --detect" in layout, layout[:400]
     hygiene = (rules / "code-hygiene.md").read_text()
     assert hygiene.startswith("---\npaths:\n") and "{{" not in hygiene and "Keep tests lean" in hygiene, hygiene[:400]
+    runbook = (rules / "operational-runbook.md").read_text()
+    assert "pointer record" in runbook and "hewtd maintain" in runbook, runbook[:400]
+    assert "credentials here" not in runbook.lower(), "runbook template invites secrets (secrets-management.md)"
+    # The fenced example pointer must not trip the pointer check in a fresh repo.
+    cc = subprocess.run([sys.executable, str(REPO / ".claude/project-map/context-check.py"),
+                         "--project-root", str(root)], capture_output=True, text=True)
+    assert cc.returncode == 0, cc.stdout[-2000:]
     (rules / "git-workflow.md").write_text("# edited\n")
     r = subprocess.run(install, capture_output=True, text=True)
     assert r.returncode == 0, r.stdout[-2000:] + r.stderr[-2000:]
