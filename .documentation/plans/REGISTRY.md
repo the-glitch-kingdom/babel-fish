@@ -3,7 +3,7 @@ title: Plans Registry
 tier: reference
 domains: [plans]
 status: active
-last_updated: '2026-10-25'
+last_updated: '2026-10-28'
 version: '1.0.0'
 purpose: Quick reference for plans documentation
 ---
@@ -35,4 +35,4 @@ purpose: Quick reference for plans documentation
 
 ---
 
-*Last updated: 2026-10-25*
+*Last updated: 2026-10-28*

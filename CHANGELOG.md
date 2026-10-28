@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **`tool-registry.md` on init.** One pointer record per CLI, MCP server, SDK,
+  credential or integration: its name, what it's for, the trap that would
+  mislead you, and `→` the doc with the detail. With hit-em-with-the-docs
+  installed, the detail is a domain doc (and a trap a knowledge-base fact), then
+  `hewtd maintain`. Loaded every session, so it stays a list of pointers; updated
+  in the same change as the tool; never holds secrets. Skipped when the repo
+  already has a tool registry: that file is kept, and the template's "Adding a
+  tool" section (the pointer-record rules) is appended to it once. The developer
+  skill points new tools at it.
+- **An existing runbook gets the pointer-record rules too.** Before, a repo with
+  an `operational-runbook.md` (or any rule named `*runbook*`) was left untouched
+  and never learned the pointer-record format; now the template's "Adding an
+  entry" section is appended once. The runbook renders through the same function
+  as the standards rules, and the separate `_render_runbook` is gone.
+
+### Changed
+
+- **This repo's runbook is pointer records** (10.1k → 4.4k chars). Six new
+  knowledge-base facts hold the detail that had no doc yet.
+
 ## [2.9.1] - 2026-10-28
 
 ### Changed

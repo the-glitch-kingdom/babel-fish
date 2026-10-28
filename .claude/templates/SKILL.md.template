@@ -57,3 +57,5 @@ If agreed, write the detail in a doc and add only a one-line **pointer record**
 loads every session. With hit-em-with-the-docs (`.documentation/` exists), a gotcha
 becomes a knowledge-base fact and a tool or procedure a domain doc, then
 `hewtd maintain`. Never record a secret or credential, only the variable's name.
+A new tool, CLI, MCP server or integration gets a pointer record in
+`.claude/rules/tool-registry.md` the same way.

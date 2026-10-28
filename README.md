@@ -223,13 +223,13 @@ python .claude/project-map/mine-sessions.py
 
 > "This looks like operational knowledge worth documenting. Want me to add it to the runbook? (Y/n)"
 
-Because it loads every session, entries are **pointer records**: the symptom, a one-line fix, and `→` a pointer to the doc holding the detail. With hit-em-with-the-docs installed, a gotcha becomes a knowledge-base fact and a tool or procedure a domain doc (then `hewtd maintain`); the runbook keeps only the pointer. It never holds secrets or credentials, only variable names. This is the anti-drift mechanism — knowledge that can't be derived from code lives here, without bloating session startup.
+A repo that already has a runbook keeps it; the installer appends the template's "Adding an entry" section once instead. Because it loads every session, entries are **pointer records**: the symptom, a one-line fix, and `→` a pointer to the doc holding the detail. With hit-em-with-the-docs installed, a gotcha becomes a knowledge-base fact and a tool or procedure a domain doc (then `hewtd maintain`); the runbook keeps only the pointer. It never holds secrets or credentials, only variable names. This is the anti-drift mechanism — knowledge that can't be derived from code lives here, without bloating session startup.
 
 ---
 
 ## Standards Rules
 
-`init` also writes six rules into `.claude/rules/`. Three load every session. `dependency-versions.md`, `docker-volumes.md` and `code-hygiene.md` carry `paths:` frontmatter, so Claude Code loads them only when Claude works with a matching file (a manifest, Dockerfile, compose file, CI workflow or source file):
+`init` also writes seven rules into `.claude/rules/`. Four load every session. `dependency-versions.md`, `docker-volumes.md` and `code-hygiene.md` carry `paths:` frontmatter, so Claude Code loads them only when Claude works with a matching file (a manifest, Dockerfile, compose file, CI workflow or source file):
 
 | File | Says |
 |------|------|
@@ -239,6 +239,7 @@ Because it loads every session, entries are **pointer records**: the symptom, a 
 | `docker-volumes.md` | Named volumes for anything a container stores; never anonymous volumes; a bind mount only when a host path is required (entrypoint/init scripts, host-provided config or certs, dev live reload, sockets), commented and `:ro`; never `down -v` / `volume rm` / `prune` without permission; Docker files under `infra/compose/` and `infra/docker/<service>/` |
 | `repo-structure.md` | Decide where a file belongs before creating it: follow `.claude/structure.toml` when there is one; otherwise suggest setting one up (`--detect`, `structure-bootstrap`) and use the default layout for anything the repo has no place for; no catch-all folders |
 | `code-hygiene.md` | Remove dead code in the change that kills it; delete debug and scaffolding code before committing; lean tests (one per behavior, no duplicates, no testing the framework), kept only in the test folder; delete tests of removed code, never skip a failing one; propose, don't silently delete, dead code you didn't create |
+| `tool-registry.md` | One pointer record per CLI, MCP server, SDK, credential or integration (name, purpose, the trap if any, `→` doc); the detail goes in a doc, the hewtd way when hit-em-with-the-docs is installed; updated in the same change as the tool; no secrets. A repo that already has a tool registry keeps it and gets this "Adding a tool" section appended instead |
 
 Each is written **once** and then belongs to the repo: re-running the installer never overwrites it. A rule is skipped entirely when the repo already has one on the same topic (an existing `secrets.md` means no `secrets-management.md`). The default branch is read from `origin/HEAD`, falling back to `main` (or `master` when that is the only branch).
 
@@ -309,7 +310,8 @@ Or ask Claude to *"set up the repo structure"*. The `structure-bootstrap` skill 
 │   ├── dependency-versions.md
 │   ├── docker-volumes.md
 │   ├── repo-structure.md
-│   └── code-hygiene.md
+│   ├── code-hygiene.md
+│   └── tool-registry.md
 └── skills/
     └── <project>-developer-skill/
         └── SKILL.md
