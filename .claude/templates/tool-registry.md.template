@@ -1,0 +1,24 @@
+# {{PROJECT_NAME}} — Tool Registry
+
+> Loaded every session, so it holds pointers, not detail. Written once by babel-fish; yours to edit.
+
+## Adding a tool
+
+Every CLI, MCP server, SDK, credential or integration this repo uses gets one **pointer record**:
+its name, what it is for (plus the one trap that would mislead you, if any), and where the detail lives.
+
+```
+- **`<tool>`**: <what it is for; the trap, if any>. → `<path to the doc>`
+```
+
+1. **The detail goes in a doc**: install, version, auth, flags, examples. If the repo uses
+   hit-em-with-the-docs (it has a `.documentation/` folder), write it the hewtd way: a doc in its
+   domain folder (CLIs and integrations usually `devops/`), and a trap as a fact under
+   `.documentation/knowledge-base/facts/` tagged `gotcha`. Then run `hewtd maintain` and add the
+   pointer record here. Without hewtd, use the repo's docs folder.
+2. **Update it in the same change** that adds, removes or changes a tool: its line and its doc together.
+3. **NEVER write a secret here.** Name the variable, profile or secret manager that holds it.
+
+## Tools
+
+_None recorded yet._

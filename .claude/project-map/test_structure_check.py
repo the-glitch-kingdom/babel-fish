@@ -680,7 +680,7 @@ def test_install_copies_the_check_and_never_touches_the_manifest(tmp):
 
 
 def test_install_writes_standards_rules_once(tmp):
-    """git-workflow / secrets-management / dependency-versions / docker-volumes / repo-structure / code-hygiene: written once, never overwritten,
+    """git-workflow / secrets-management / dependency-versions / docker-volumes / repo-structure / code-hygiene / tool-registry: written once, never overwritten,
     and skipped when the repo already has its own rule on that topic."""
     root = make_repo(tmp / "p", {"README.md": "x", ".claude/rules/secrets.md": "# ours\n"}, manifest=None)
     install = ["bash", str(REPO / ".claude/install.sh"), str(root)]
@@ -700,6 +700,8 @@ def test_install_writes_standards_rules_once(tmp):
     assert "{{" not in layout and "structure-check.py --detect" in layout, layout[:400]
     hygiene = (rules / "code-hygiene.md").read_text()
     assert hygiene.startswith("---\npaths:\n") and "{{" not in hygiene and "Keep tests lean" in hygiene, hygiene[:400]
+    tools = (rules / "tool-registry.md").read_text()
+    assert "{{" not in tools and "pointer record" in tools and "hewtd maintain" in tools, tools[:400]
     runbook = (rules / "operational-runbook.md").read_text()
     assert "pointer record" in runbook and "hewtd maintain" in runbook, runbook[:400]
     assert "credentials here" not in runbook.lower(), "runbook template invites secrets (secrets-management.md)"
