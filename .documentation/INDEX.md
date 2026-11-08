@@ -67,7 +67,7 @@ purpose: Navigation hub for all documentation
 | Document | Tier | Status | Updated | Purpose |
 |----------|------|--------|----------|---------|
 | [Grading semantics](architecture/grading-semantics.md) | reference | active | 2026-10-22 | What grader.py measures and what it deliberately does not, and why usefulness is warned about rather than scored |
-| [Project map watch set](architecture/project-map-watch-set.md) | reference | active | 2026-09-04 | How generate.py decides which files can trigger a regeneration, and why the rules differ per file kind |
+| [Project map watch set](architecture/project-map-watch-set.md) | reference | active | 2026-11-07 | How generate.py decides which files can trigger a regeneration, and why the rules differ per file kind |
 | [Session vocabulary mining](architecture/session-vocabulary-mining.md) | reference | active | 2026-09-04 | How mine-sessions.py turns Claude Code transcripts into learned aliases, and the transcript-shape assumptions it depends on |
 
 ---

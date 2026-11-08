@@ -4,7 +4,7 @@ tier: reference
 domains: [api, architecture]
 status: active
 last_updated: '2026-11-07'
-version: '3.0.0'
+version: '3.0.1'
 purpose: The glossary.json artifact babel-fish emits for machine consumers, and the stability rules around it
 ---
 
@@ -69,7 +69,7 @@ staged by the pre-commit hook.
 | `entries[].section` | string | Category: `feature`, `model`, `api`, `skill`, `command`, `learned` |
 | `entries[].description` | string \| null | Free text, or null |
 | `entries[].score` | number \| null | Learned terms: the session-mining score (frequency x recency). `null` for terms parsed from code. |
-| `entries[].specificity` | number \| null | Share (0-1) of the repo's source and doc files containing every word of `key`. High means generic: filter on it rather than rescanning the repo. `null` when there were no files to measure. |
+| `entries[].specificity` | number \| null | Share (0-1) of the repo's source and doc files containing every word of `key`, counted over files git does not ignore, skipping any over 1 MB. High means generic: filter on it rather than rescanning the repo. `null` when there were no files to measure. |
 
 What is left out by default:
 
