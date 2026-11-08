@@ -17,6 +17,7 @@
 - [`.documentation/knowledge-base/facts/releases-bump-three-manifests.md`](.documentation/knowledge-base/facts/releases-bump-three-manifests.md)
 - [`.documentation/knowledge-base/facts/shared-dep-fix-needs-a-floor-bump.md`](.documentation/knowledge-base/facts/shared-dep-fix-needs-a-floor-bump.md)
 - [`.documentation/knowledge-base/facts/update-and-status-differ-by-install-kind.md`](.documentation/knowledge-base/facts/update-and-status-differ-by-install-kind.md)
+- [`.documentation/knowledge-base/facts/whole-tree-rglob-reads-gitignored-caches.md`](.documentation/knowledge-base/facts/whole-tree-rglob-reads-gitignored-caches.md)
 - [`.documentation/knowledge-base/facts/writers-bind-output-paths-at-import.md`](.documentation/knowledge-base/facts/writers-bind-output-paths-at-import.md)
 - [`.documentation/procedures/changing-repo-structure.md`](.documentation/procedures/changing-repo-structure.md)
 - [`.documentation/quickstart/integration-with-semantic-memory.md`](.documentation/quickstart/integration-with-semantic-memory.md)
