@@ -76,9 +76,48 @@ def test_still_reads_flat_content(m, root):
 
 
 def test_extracts_tool_paths_from_nested(m, root):
+    (root / "src").mkdir(parents=True, exist_ok=True)
+    (root / "src/app.py").write_text("# app\n")
     paths = m.extract_file_paths_from_tool_calls(
         [tool_msg("Read", {"file_path": str(root / "src/app.py")})])
     assert paths == ["src/app.py"], paths
+
+
+def test_tool_paths_are_existing_files_only(m, root):
+    """#38: Grep's directory and Glob's pattern were recorded as locations."""
+    (root / "src").mkdir(parents=True, exist_ok=True)
+    paths = m.extract_file_paths_from_tool_calls([
+        tool_msg("Grep", {"pattern": "def ", "path": str(root / "src")}),
+        tool_msg("Glob", {"pattern": "src/**/*.py"}),
+        tool_msg("Read", {"file_path": "gone.py"}),
+    ])
+    assert paths == [], paths
+
+
+# ── #38: stale targets, hit order ────────────────────────────────────────────
+
+def test_prune_drops_missing_targets_and_empty_entries(m, root):
+    (root / "keep.py").write_text("")
+    vocab = {
+        # pre-#38 shape: bare target list, no target_hits
+        "deals": {"targets": ["gone.py", "keep.py"], "score": 6, "source": "session-mined"},
+        "ghost": {"targets": ["gone.py"], "score": 6, "source": "session-mined"},
+        "code":  {"targets": ["gone.py"], "score": 6, "source": "code"},
+    }
+    out = m.prune_missing(vocab)
+    assert out["deals"]["targets"] == ["keep.py"], out["deals"]
+    assert "ghost" not in out, out
+    assert out["code"] is vocab["code"], "non-mined entries are not the miner's to prune"
+
+
+def test_merge_orders_targets_by_hits(m, root):
+    old = {"deals": {"targets": ["a.py", "b.py"], "score": 5, "count": 2,
+                     "last_seen": "2026-01-01", "source": "session-mined"}}
+    new = {"deals": {"targets": ["b.py"], "target_hits": {"b.py": 3}, "score": 3,
+                     "count": 3, "last_seen": "2026-02-01", "source": "session-mined"}}
+    merged = m.merge_learned(old, new)["deals"]
+    assert merged["targets"] == ["b.py", "a.py"], merged
+    assert merged["target_hits"] == {"a.py": 1, "b.py": 4}, merged
 
 
 # ── Defect 2: regex quantifiers ──────────────────────────────────────────────
