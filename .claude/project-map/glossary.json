@@ -1,93 +1,122 @@
 {
-  "schema_version": "1.0",
-  "generated_at": "2026-10-28T20:59:34Z",
+  "schema_version": "2.0",
+  "generated_at": "2026-11-08T02:26:12Z",
   "source": ".claude/project-map/sections/01-vocabulary.md",
   "project": "babel-fish",
-  "entry_count": 14,
+  "entry_count": 7,
   "entries": [
     {
-      "key": "/policy",
-      "canonical_path": "commands/policy.md",
-      "section": "command",
-      "description": "Get or set the babel-fish update policy (auto | nudge | off)"
-    },
-    {
-      "key": "/relink",
-      "canonical_path": "commands/relink.md",
-      "section": "command",
-      "description": "Re-run the skill linker — refresh symlinks from node_modules into .claude/skills/"
-    },
-    {
-      "key": "/status",
-      "canonical_path": "commands/status.md",
-      "section": "command",
-      "description": "Show installed version, latest available version, current update policy, and hook registration state"
-    },
-    {
-      "key": "/update",
-      "canonical_path": "commands/update.md",
-      "section": "command",
-      "description": "Update babel-fish to the latest version (runs npm update + re-links skills)"
-    },
-    {
       "key": "babel fish developer skill",
+      "aliases": [
+        "babel-fish-developer-skill",
+        "babel fish developer skill"
+      ],
       "canonical_path": "skills/babel-fish-developer-skill/SKILL.md",
+      "paths": [
+        "skills/babel-fish-developer-skill/SKILL.md",
+        ".claude/skills/babel-fish-developer-skill/SKILL.md"
+      ],
+      "dirs": [],
       "section": "skill",
-      "description": "Full-stack developer context for any project with Babel Fish installed. Provides instant access to project map, vocabula"
-    },
-    {
-      "key": "babel-fish-developer-skill",
-      "canonical_path": "skills/babel-fish-developer-skill/SKILL.md",
-      "section": "skill",
-      "description": "Full-stack developer context for any project with Babel Fish installed. Provides instant access to project map, vocabula"
+      "description": "Full-stack developer context for any project with Babel Fish installed. Provides instant access to project map, vocabula",
+      "score": null,
+      "specificity": 0.2093
     },
     {
       "key": "policy",
+      "aliases": [
+        "policy",
+        "/policy"
+      ],
       "canonical_path": "commands/policy.md",
+      "paths": [
+        "commands/policy.md"
+      ],
+      "dirs": [],
       "section": "command",
-      "description": "Get or set the babel-fish update policy (auto | nudge | off)"
+      "description": "Get or set the babel-fish update policy (auto | nudge | off)",
+      "score": null,
+      "specificity": 0.2093
     },
     {
       "key": "relink",
+      "aliases": [
+        "relink",
+        "/relink"
+      ],
       "canonical_path": "commands/relink.md",
+      "paths": [
+        "commands/relink.md"
+      ],
+      "dirs": [],
       "section": "command",
-      "description": "Re-run the skill linker — refresh symlinks from node_modules into .claude/skills/"
+      "description": "Re-run the skill linker — refresh symlinks from node_modules into .claude/skills/",
+      "score": null,
+      "specificity": 0.1395
     },
     {
       "key": "semantic first",
+      "aliases": [
+        "semantic-first",
+        "semantic first"
+      ],
       "canonical_path": ".claude/skills/semantic-first/SKILL.md",
+      "paths": [
+        ".claude/skills/semantic-first/SKILL.md"
+      ],
+      "dirs": [],
       "section": "skill",
-      "description": "Route documentation lookups, internal procedure questions, repo architectural/vocabulary/convention questions, and resea"
-    },
-    {
-      "key": "semantic-first",
-      "canonical_path": ".claude/skills/semantic-first/SKILL.md",
-      "section": "skill",
-      "description": "Route documentation lookups, internal procedure questions, repo architectural/vocabulary/convention questions, and resea"
+      "description": "Route documentation lookups, internal procedure questions, repo architectural/vocabulary/convention questions, and resea",
+      "score": null,
+      "specificity": 0.0465
     },
     {
       "key": "status",
+      "aliases": [
+        "status",
+        "/status"
+      ],
       "canonical_path": "commands/status.md",
+      "paths": [
+        "commands/status.md"
+      ],
+      "dirs": [],
       "section": "command",
-      "description": "Show installed version, latest available version, current update policy, and hook registration state"
+      "description": "Show installed version, latest available version, current update policy, and hook registration state",
+      "score": null,
+      "specificity": 0.6744
     },
     {
       "key": "structure bootstrap",
+      "aliases": [
+        "structure-bootstrap",
+        "structure bootstrap"
+      ],
       "canonical_path": "skills/structure-bootstrap/SKILL.md",
+      "paths": [
+        "skills/structure-bootstrap/SKILL.md"
+      ],
+      "dirs": [],
       "section": "skill",
-      "description": "Set up, adopt or change a repo's structure manifest (.claude/structure.toml) — the approved folders, what each may hold,"
-    },
-    {
-      "key": "structure-bootstrap",
-      "canonical_path": "skills/structure-bootstrap/SKILL.md",
-      "section": "skill",
-      "description": "Set up, adopt or change a repo's structure manifest (.claude/structure.toml) — the approved folders, what each may hold,"
+      "description": "Set up, adopt or change a repo's structure manifest (.claude/structure.toml) — the approved folders, what each may hold,",
+      "score": null,
+      "specificity": 0.1628
     },
     {
       "key": "update",
+      "aliases": [
+        "update",
+        "/update"
+      ],
       "canonical_path": "commands/update.md",
+      "paths": [
+        "commands/update.md"
+      ],
+      "dirs": [],
       "section": "command",
-      "description": "Update babel-fish to the latest version (runs npm update + re-links skills)"
+      "description": "Update babel-fish to the latest version (runs npm update + re-links skills)",
+      "score": null,
+      "specificity": 0.3256
     }
   ]
 }

@@ -37,7 +37,7 @@ LEARNED_VOC  = MAP_DIR / "learned-vocabulary.json"
 GLOSSARY     = MAP_DIR / "glossary.json"
 # Bump when the glossary.json shape changes. Consumers should refuse a major
 # they do not recognise rather than guess.
-GLOSSARY_SCHEMA_VERSION = "1.0"
+GLOSSARY_SCHEMA_VERSION = "2.0"
 
 # Resolve project root: two levels up from .claude/project-map/
 PROJECT_ROOT = MAP_DIR.parent.parent
@@ -808,6 +808,58 @@ class ImportChainTracer:
 
 # ── Vocabulary Builder ────────────────────────────────────────────────────────
 
+def norm_key(term: str) -> str:
+    """'/agent-docs-align', 'agent_docs align', ' _x' -> one spelling (#38)."""
+    return ' '.join(re.sub(r'[-_\s]+', ' ', term.lower().lstrip(' /_')).split())
+
+
+# tests/, __tests__/, test_*, *.test.*, *.spec.*, *_test.* — excluded unless --include-tests.
+TEST_PATH_RE = re.compile(r'(^|/)(tests?|__tests__)/|(^|/)test_[^/]*$|[._](test|spec)\.[^/]+$')
+
+
+def is_test_path(rel: str) -> bool:
+    return bool(TEST_PATH_RE.search(rel))
+
+
+# A learned single word found in more than this share of files is a common word,
+# not a name for something (#38: `active`, `config`, `errors`).
+GENERIC_LEARNED_SHARE = 0.20
+
+
+def finalize_vocab(vocab: list[dict], corpus: list[Path], include_tests: bool = False) -> list[dict]:
+    """Resolve every entry against the repo as it is now.
+
+    Paths that no longer exist are dropped (learned targets outlive renames),
+    files and directories are split, test files are left out unless asked for,
+    and `specificity` — the share of `corpus` files containing every word of the
+    term — is recorded so consumers can drop generic terms without a rescan.
+    """
+    tokens = []
+    for f in corpus:
+        try:
+            text = f.read_text(encoding='utf-8', errors='replace')
+        except OSError:
+            continue
+        # DealPipeline, deal_pipeline and deal-pipeline all yield {deal, pipeline}.
+        tokens.append(set(re.findall(r'[a-z0-9]+', re.sub(r'([a-z0-9])([A-Z])', r'\1 \2', text).lower())))
+
+    out = []
+    for v in vocab:
+        given = [p for p in v.get('paths', []) if include_tests or not is_test_path(p)]
+        files = [p for p in given if (PROJECT_ROOT / p).is_file()]
+        dirs = [p for p in given if (PROJECT_ROOT / p).is_dir()]
+        words = v['alias'].split()
+        share = (round(sum(all(w in t for w in words) for t in tokens) / len(tokens), 4)
+                 if tokens and words else None)
+        if v.get('paths') and not (files or dirs):
+            continue  # every location is gone or a test file
+        if v['type'] == 'learned' and (not files or (len(words) == 1 and (share or 0) > GENERIC_LEARNED_SHARE)):
+            continue
+        out.append({**v, 'paths': files, 'dirs': dirs, 'specificity': share,
+                    'location': next(iter(files + dirs), '')})
+    return out
+
+
 class VocabularyBuilder:
     SKIP_WORDS = {'index', 'main', 'base', 'common', 'utils', 'helpers', 'types',
                   'constants', 'config', 'lib', 'api', 'app', 'src', 'test', 'tests'}
@@ -822,31 +874,29 @@ class VocabularyBuilder:
         skills: list[dict] | None = None,
     ) -> list[dict]:
         vocab: dict[str, dict] = {}
+        self._index: dict[str, str] = {}  # every normalized spelling -> its entry's key
 
         # From skills and slash commands. In a plugin repo this is the only
         # source that fires — there are no routes or models to mine.
         for sk in skills or []:
             note = sk['description'][:120] if sk['description'] else f"{sk['kind']} manifest"
-            for alias in self._name_to_aliases(sk['name']):
-                self._add(vocab, alias, sk['kind'], sk['file'], note)
+            aliases = self._name_to_aliases(sk['name'])
             if sk['kind'] == 'command':
-                # humans say "/status" as often as "status"
-                self._add(vocab, f"/{sk['name']}", 'command', sk['file'], note)
+                aliases.append(f"/{sk['name']}")  # humans say "/status" as often as "status"
+            self._add(vocab, aliases, sk['kind'], [sk['file']], note)
 
         # From features
         for feat in features:
             name = feat['name']
             if name.lower() in self.SKIP_WORDS:
                 continue
-            aliases = self._name_to_aliases(name)
-            for alias in aliases:
-                self._add(vocab, alias, 'feature', feat.get('path', ''), f"{feat['component_count']} components")
+            self._add(vocab, self._name_to_aliases(name), 'feature', [feat.get('path', '')],
+                      f"{feat['component_count']} components")
 
         # From models
         for model in models:
-            aliases = self._name_to_aliases(model['name'])
-            for alias in aliases:
-                self._add(vocab, alias, 'model', model.get('file', ''), f"table/model: {model['name']}")
+            self._add(vocab, self._name_to_aliases(model['name']), 'model', [model.get('file', '')],
+                      f"table/model: {model['name']}")
 
         # From routes (group by path prefix)
         route_groups: dict[str, list] = {}
@@ -855,21 +905,15 @@ class VocabularyBuilder:
             if prefix and prefix not in self.SKIP_WORDS:
                 route_groups.setdefault(prefix, []).append(route)
         for prefix, group in route_groups.items():
-            aliases = self._name_to_aliases(prefix)
-            file_ex = group[0].get('file', '')
-            for alias in aliases:
-                self._add(vocab, alias, 'api', file_ex, f"{len(group)} routes")
+            self._add(vocab, self._name_to_aliases(prefix), 'api', [group[0].get('file', '')],
+                      f"{len(group)} routes")
 
-        # Merge learned vocabulary
+        # Merge learned vocabulary. Targets arrive most-used first (mine-sessions).
         learned = self._load_learned()
         for alias, data in learned.items():
-            if alias not in vocab and data.get('score', 0) >= 5:
-                vocab[alias] = {
-                    'alias': alias,
-                    'type': 'learned',
-                    'location': ', '.join(data.get('targets', [])),
-                    'notes': f"learned from session (score: {data['score']:.1f})",
-                }
+            if data.get('score', 0) >= 5:
+                self._add(vocab, [alias], 'learned', list(data.get('targets', [])),
+                          f"learned from session (score: {data['score']:.1f})", score=data['score'])
 
         return list(vocab.values())
 
@@ -888,9 +932,30 @@ class VocabularyBuilder:
             aliases.append(clean)
         return list(dict.fromkeys(aliases))  # dedupe, preserve order
 
-    def _add(self, vocab: dict, alias: str, type_: str, location: str, notes: str) -> None:
-        if alias and alias not in vocab:
-            vocab[alias] = {'alias': alias, 'type': type_, 'location': location, 'notes': notes}
+    def _add(self, vocab: dict, aliases: list[str], type_: str, paths: list[str], notes: str,
+             score: float | None = None) -> None:
+        """One entry per term: spellings that normalize alike share it (#38).
+
+        The first source to claim a term keeps it (section, notes), as before;
+        a later spelling only joins `aliases`, and its paths only when it comes
+        from the same section, so a learned guess never lands on a parsed entry.
+        """
+        aliases = [a for a in aliases if norm_key(a)]
+        if not aliases:
+            return
+        key = next((self._index[norm_key(a)] for a in aliases if norm_key(a) in self._index), None)
+        if key is None:
+            key = norm_key(aliases[0])
+            vocab[key] = {'alias': key, 'aliases': [], 'type': type_, 'paths': [],
+                          'location': '', 'notes': notes, 'score': score}
+        entry = vocab[key]
+        for a in aliases:
+            self._index.setdefault(norm_key(a), key)
+            if a not in entry['aliases']:
+                entry['aliases'].append(a)
+        if entry['type'] == type_:
+            entry['paths'] += [p for p in paths if p and p not in entry['paths']]
+            entry['location'] = entry['location'] or next(iter(entry['paths']), '')
 
     def _load_learned(self) -> dict:
         if LEARNED_VOC.exists():
@@ -1180,7 +1245,9 @@ def build_vocabulary_section(vocab: list[dict]) -> str:
         "|-------|------|----------|-------|",
     ]
     for v in sorted(vocab, key=lambda x: x.get('alias', '')):
-        alias    = v.get('alias', '').replace('|', '\\|')
+        key      = v.get('alias', '')
+        # Every spelling stays greppable: "/status" and "status" are one entry now.
+        alias    = ', '.join([key] + [a for a in v.get('aliases', []) if a != key]).replace('|', '\\|')
         type_    = v.get('type', '').replace('|', '\\|')
         location = v.get('location', '').replace('|', '\\|')
         notes    = v.get('notes', '').replace('|', '\\|')
@@ -1527,10 +1594,16 @@ def write_glossary(vocab: list[dict], stack: dict) -> Path:
     entries = [
         {
             'key': v.get('alias', ''),
-            'canonical_path': v.get('location', ''),
+            'aliases': v.get('aliases') or [v.get('alias', '')],
+            # One file, the most used, or null: never a joined list (#38).
+            'canonical_path': next(iter(v.get('paths') or []), None),
+            'paths': v.get('paths') or [],
+            'dirs': v.get('dirs') or [],
             'section': v.get('type', ''),
             # Per field, not on the dumped JSON: a match could swallow a closing quote.
             'description': redact_secrets(v.get('notes', '')) or None,
+            'score': v.get('score'),
+            'specificity': v.get('specificity'),
         }
         for v in sorted(vocab, key=lambda x: x.get('alias', ''))
         if v.get('alias')
@@ -1686,6 +1759,8 @@ def main() -> None:
     parser.add_argument('--force', action='store_true', help='Force regeneration even if checksums match')
     parser.add_argument('--project-root', type=Path, default=None, help='Override project root')
     parser.add_argument('--stack-json', type=Path, default=None, help='Path to stack.json from detect-stack.sh')
+    parser.add_argument('--include-tests', action='store_true',
+                        help='Map models, routes and vocabulary found in test files too')
     args = parser.parse_args()
 
     if args.project_root:
@@ -1706,9 +1781,12 @@ def main() -> None:
     print(f"[generate] Stack: {stack['language']} / {stack['framework']}")
 
     # 3. Collect all relevant files
-    py_files  = [f for f in watched if f.suffix == '.py']
-    ts_files  = [f for f in watched if f.suffix in ('.ts','.tsx','.js','.jsx')]
-    go_files  = [f for f in watched if f.suffix == '.go']
+    # Test-only models and helpers are not the project's vocabulary (#38).
+    source = [f for f in watched
+              if args.include_tests or not is_test_path(f.relative_to(PROJECT_ROOT).as_posix())]
+    py_files  = [f for f in source if f.suffix == '.py']
+    ts_files  = [f for f in source if f.suffix in ('.ts','.tsx','.js','.jsx')]
+    go_files  = [f for f in source if f.suffix == '.go']
 
     # 4. Parse
     print("[generate] Parsing routes...")
@@ -1744,6 +1822,7 @@ def main() -> None:
 
     print("[generate] Building vocabulary...")
     vocab = VocabularyBuilder().build(routes, models, schemas, features, stack, skills)
+    vocab = finalize_vocab(vocab, watched + collect_doc_files(), args.include_tests)
 
     glossary_path = write_glossary(vocab, stack)
     print(f"[generate] Glossary → {glossary_path.name} ({len(vocab)} entries)")
