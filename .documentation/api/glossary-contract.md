@@ -105,7 +105,7 @@ producer now hands over structured data and the question disappears.
 
 - `schema_version` is `MAJOR.MINOR`. New optional fields bump the minor;
   removing or retyping a field bumps the major.
-- The file path is stable for babel-fish 2.x.
+- The file path is stable for babel-fish 2.x and 3.x.
 - `entries[].section` values may gain new members as new extractors are added.
   Treat an unknown section as a valid category, not an error.
 - An empty `entries` array is valid and means the map found no vocabulary. It

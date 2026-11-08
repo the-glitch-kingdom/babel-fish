@@ -8,6 +8,7 @@
 - [`.documentation/architecture/project-map-watch-set.md`](.documentation/architecture/project-map-watch-set.md)
 - [`.documentation/architecture/session-vocabulary-mining.md`](.documentation/architecture/session-vocabulary-mining.md)
 - [`.documentation/knowledge-base/facts/grep-glob-inputs-are-not-file-locations.md`](.documentation/knowledge-base/facts/grep-glob-inputs-are-not-file-locations.md)
+- [`.documentation/knowledge-base/facts/installed-scripts-must-not-hold-credential-shaped-examples.md`](.documentation/knowledge-base/facts/installed-scripts-must-not-hold-credential-shaped-examples.md)
 - [`.documentation/knowledge-base/facts/installer-checksum-must-match-install-sh.md`](.documentation/knowledge-base/facts/installer-checksum-must-match-install-sh.md)
 - [`.documentation/knowledge-base/facts/installer-never-rewrites-an-existing-hook-block.md`](.documentation/knowledge-base/facts/installer-never-rewrites-an-existing-hook-block.md)
 - [`.documentation/knowledge-base/facts/map-env-section-never-holds-values.md`](.documentation/knowledge-base/facts/map-env-section-never-holds-values.md)
