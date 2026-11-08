@@ -3,8 +3,9 @@ title: Quickstart Registry
 tier: reference
 domains: [quickstart]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Quick reference for quickstart documentation
 ---
 
@@ -26,7 +27,7 @@ purpose: Quick reference for quickstart documentation
 
 ## Recently Updated
 
-- [Integration with semantic-memory](integration-with-semantic-memory.md) - 2026-09-04
+- [Integration with semantic-memory](integration-with-semantic-memory.md) - 2026-11-07
 
 ## By Status
 
@@ -48,4 +49,4 @@ purpose: Quick reference for quickstart documentation
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*

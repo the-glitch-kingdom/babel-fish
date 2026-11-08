@@ -3,8 +3,9 @@ title: Features Documentation Index
 tier: reference
 domains: [features]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Complete listing of features documentation
 ---
 
@@ -40,4 +41,4 @@ This domain covers: feature, features, implementation, guide, how-to, tutorial, 
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*

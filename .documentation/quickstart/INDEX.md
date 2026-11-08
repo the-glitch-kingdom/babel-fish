@@ -3,8 +3,9 @@ title: Quickstart Documentation Index
 tier: reference
 domains: [quickstart]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Complete listing of quickstart documentation
 ---
 
@@ -23,9 +24,9 @@ purpose: Complete listing of quickstart documentation
 
 ### Guides
 
-| Document | Status | Updated | Words |
-|----------|--------|---------|-------|
-| [Integration with semantic-memory](integration-with-semantic-memory.md) | active | 2026-09-04 | 438 |
+| Document | Status | Updated | Words | Purpose |
+|----------|--------|---------|-------|---------|
+| [Integration with semantic-memory](integration-with-semantic-memory.md) | active | 2026-11-07 | 449 | What babel-fish provides for semantic-memory to consume, and the current state of that integration |
 
 ## Keywords
 
@@ -39,4 +40,4 @@ This domain covers: quickstart, quick-start, getting-started, setup, install, in
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*

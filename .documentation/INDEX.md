@@ -3,8 +3,9 @@ title: Documentation Index
 tier: reference
 domains: [root]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Navigation hub for all documentation
 ---
 
@@ -50,10 +51,10 @@ purpose: Navigation hub for all documentation
 
 **Path:** `api/`
 
-| Document | Tier | Status | Updated |
-|----------|------|--------|----------|
-| [Babel-fish glossary contract](api/glossary-contract.md) | reference | active | 2026-09-04 |
-| [Skill parser contract](api/skill-parser-contract.md) | reference | active | 2026-09-04 |
+| Document | Tier | Status | Updated | Purpose |
+|----------|------|--------|----------|---------|
+| [Babel-fish glossary contract](api/glossary-contract.md) | reference | active | 2026-11-07 | The glossary.json artifact babel-fish emits for machine consumers, and the stability rules around it |
+| [Skill parser contract](api/skill-parser-contract.md) | reference | active | 2026-09-04 | Which frontmatter fields SkillParser reads from skill and command manifests, and how they become vocabulary entries |
 
 ---
 
@@ -63,11 +64,11 @@ purpose: Navigation hub for all documentation
 
 **Path:** `architecture/`
 
-| Document | Tier | Status | Updated |
-|----------|------|--------|----------|
-| [Grading semantics](architecture/grading-semantics.md) | reference | active | 2026-10-22 |
-| [Project map watch set](architecture/project-map-watch-set.md) | reference | active | 2026-09-04 |
-| [Session vocabulary mining](architecture/session-vocabulary-mining.md) | reference | active | 2026-09-04 |
+| Document | Tier | Status | Updated | Purpose |
+|----------|------|--------|----------|---------|
+| [Grading semantics](architecture/grading-semantics.md) | reference | active | 2026-10-22 | What grader.py measures and what it deliberately does not, and why usefulness is warned about rather than scored |
+| [Project map watch set](architecture/project-map-watch-set.md) | reference | active | 2026-09-04 | How generate.py decides which files can trigger a regeneration, and why the rules differ per file kind |
+| [Session vocabulary mining](architecture/session-vocabulary-mining.md) | reference | active | 2026-09-04 | How mine-sessions.py turns Claude Code transcripts into learned aliases, and the transcript-shape assumptions it depends on |
 
 ---
 
@@ -127,9 +128,9 @@ purpose: Navigation hub for all documentation
 
 **Path:** `procedures/`
 
-| Document | Tier | Status | Updated |
-|----------|------|--------|----------|
-| [Changing repo structure](procedures/changing-repo-structure.md) | guide | active | 2026-09-30 |
+| Document | Tier | Status | Updated | Purpose |
+|----------|------|--------|----------|---------|
+| [Changing repo structure](procedures/changing-repo-structure.md) | guide | active | 2026-09-30 | How to adopt the structure check, and recipes for adding, moving and retiring folders, apps, environments and repo pointers |
 
 ---
 
@@ -139,9 +140,9 @@ purpose: Navigation hub for all documentation
 
 **Path:** `quickstart/`
 
-| Document | Tier | Status | Updated |
-|----------|------|--------|----------|
-| [Integration with semantic-memory](quickstart/integration-with-semantic-memory.md) | guide | active | 2026-09-04 |
+| Document | Tier | Status | Updated | Purpose |
+|----------|------|--------|----------|---------|
+| [Integration with semantic-memory](quickstart/integration-with-semantic-memory.md) | guide | active | 2026-11-07 | What babel-fish provides for semantic-memory to consume, and the current state of that integration |
 
 ---
 
@@ -161,10 +162,10 @@ purpose: Navigation hub for all documentation
 
 **Path:** `standards/`
 
-| Document | Tier | Status | Updated |
-|----------|------|--------|----------|
-| [Auto-loaded context check](standards/auto-loaded-context-check.md) | standard | active | 2026-10-25 |
-| [Repo structure check](standards/repo-structure-check.md) | standard | active | 2026-09-30 |
+| Document | Tier | Status | Updated | Purpose |
+|----------|------|--------|----------|---------|
+| [Auto-loaded context check](standards/auto-loaded-context-check.md) | standard | active | 2026-10-25 | Documentation for auto-loaded context check |
+| [Repo structure check](standards/repo-structure-check.md) | standard | active | 2026-09-30 | Reference for .claude/structure.toml and structure-check.py -- folders, lifecycle, environments, repo pointers, CLI, hook and CI |
 
 ---
 
@@ -184,11 +185,11 @@ purpose: Navigation hub for all documentation
 
 **Path:** `troubleshooting/`
 
-| Document | Tier | Status | Updated |
-|----------|------|--------|----------|
-| [Learned vocabulary is empty](troubleshooting/learned-vocabulary-empty.md) | guide | active | 2026-09-04 |
-| [Project map is empty or stale](troubleshooting/map-is-empty.md) | guide | active | 2026-09-04 |
-| [Structure check failures](troubleshooting/structure-check-failures.md) | guide | active | 2026-09-30 |
+| Document | Tier | Status | Updated | Purpose |
+|----------|------|--------|----------|---------|
+| [Learned vocabulary is empty](troubleshooting/learned-vocabulary-empty.md) | guide | active | 2026-09-04 | Why section 17 has no entries, and how to tell an expected empty result from a broken miner |
+| [Project map is empty or stale](troubleshooting/map-is-empty.md) | guide | active | 2026-09-04 | Symptom-cause-fix for an empty project map, a map that will not regenerate, and a stale section 19 |
+| [Structure check failures](troubleshooting/structure-check-failures.md) | guide | active | 2026-09-30 | Symptom-cause-fix for structure-check.py -- blocked commits, a check that never runs, unusable manifests, surprising detection |
 
 ---
 
@@ -204,6 +205,6 @@ purpose: Navigation hub for all documentation
 
 ## Maintenance
 
-- **Last generated:** 2026-10-28
+- **Last generated:** 2026-11-08
 - **Run maintenance:** `npx hit-em-with-the-docs maintain`
 - **Regenerate index:** `npx hit-em-with-the-docs index`

@@ -3,8 +3,8 @@ title: Integration with semantic-memory
 tier: guide
 domains: [quickstart, troubleshooting]
 status: active
-last_updated: '2026-09-04'
-version: '2.0.0'
+last_updated: '2026-11-07'
+version: '2.1.0'
 purpose: What babel-fish provides for semantic-memory to consume, and the current state of that integration
 ---
 
@@ -45,11 +45,13 @@ Both are regenerated on every map build and staged by the pre-commit hook.
 
 ```json
 {
-  "schema_version": "1.0",
-  "entry_count": 10,
+  "schema_version": "2.0",
+  "entry_count": 7,
   "entries": [
-    { "key": "/status", "canonical_path": "commands/status.md",
-      "section": "command", "description": "Show installed version…" }
+    { "key": "status", "aliases": ["status", "/status"],
+      "canonical_path": "commands/status.md", "paths": ["commands/status.md"],
+      "dirs": [], "section": "command", "description": "Show installed version…",
+      "score": null, "specificity": 0.6744 }
   ]
 }
 ```

@@ -3,8 +3,9 @@ title: API Documentation Index
 tier: reference
 domains: [api]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Complete listing of api documentation
 ---
 
@@ -23,10 +24,10 @@ purpose: Complete listing of api documentation
 
 ### References
 
-| Document | Status | Updated | Words |
-|----------|--------|---------|-------|
-| [Babel-fish glossary contract](glossary-contract.md) | active | 2026-09-04 | 594 |
-| [Skill parser contract](skill-parser-contract.md) | active | 2026-09-04 | 472 |
+| Document | Status | Updated | Words | Purpose |
+|----------|--------|---------|-------|---------|
+| [Babel-fish glossary contract](glossary-contract.md) | active | 2026-11-07 | 994 | The glossary.json artifact babel-fish emits for machine consumers, and the stability rules around it |
+| [Skill parser contract](skill-parser-contract.md) | active | 2026-09-04 | 472 | Which frontmatter fields SkillParser reads from skill and command manifests, and how they become vocabulary entries |
 
 ## Keywords
 
@@ -40,4 +41,4 @@ This domain covers: api, endpoint, endpoints, route, routes, rest, restful, grap
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*

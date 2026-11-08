@@ -3,8 +3,9 @@ title: Standards Registry
 tier: reference
 domains: [standards]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Quick reference for standards documentation
 ---
 
@@ -50,4 +51,4 @@ purpose: Quick reference for standards documentation
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*
