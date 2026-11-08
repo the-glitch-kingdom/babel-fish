@@ -3,8 +3,8 @@ title: Babel-fish glossary contract
 tier: reference
 domains: [api, architecture]
 status: active
-last_updated: '2026-09-04'
-version: '2.0.0'
+last_updated: '2026-11-07'
+version: '3.0.0'
 purpose: The glossary.json artifact babel-fish emits for machine consumers, and the stability rules around it
 ---
 
@@ -20,23 +20,33 @@ staged by the pre-commit hook.
 
 ```json
 {
-  "schema_version": "1.0",
-  "generated_at": "2026-09-04T20:03:33Z",
+  "schema_version": "2.0",
+  "generated_at": "2026-11-08T02:26:12Z",
   "source": ".claude/project-map/sections/01-vocabulary.md",
   "project": "babel-fish",
-  "entry_count": 10,
+  "entry_count": 7,
   "entries": [
     {
-      "key": "/policy",
+      "key": "policy",
+      "aliases": ["policy", "/policy"],
       "canonical_path": "commands/policy.md",
+      "paths": ["commands/policy.md"],
+      "dirs": [],
       "section": "command",
-      "description": "Get or set the babel-fish update policy (auto | nudge | off)"
+      "description": "Get or set the babel-fish update policy (auto | nudge | off)",
+      "score": null,
+      "specificity": 0.2093
     },
     {
-      "key": "/relink",
-      "canonical_path": "commands/relink.md",
-      "section": "command",
-      "description": "Re-run the skill linker — refresh symlinks from node_modules into .claude/skills/"
+      "key": "deal pipeline",
+      "aliases": ["deal pipeline"],
+      "canonical_path": "src/deals/pipeline.py",
+      "paths": ["src/deals/pipeline.py", "src/deals/views.py"],
+      "dirs": [],
+      "section": "learned",
+      "description": "learned from session (score: 8.0)",
+      "score": 8.0,
+      "specificity": 0.031
     }
   ]
 }
@@ -46,15 +56,30 @@ staged by the pre-commit hook.
 
 | Field | Type | Meaning |
 |---|---|---|
-| `schema_version` | string | Shape version. Currently `"1.0"`. Refuse a major you do not recognise rather than guessing. |
+| `schema_version` | string | Shape version. Currently `"2.0"`. Refuse a major you do not recognise rather than guessing. |
 | `generated_at` | string | ISO 8601 UTC, when the map was last generated |
 | `source` | string | Repo-relative path of the human-facing section this was derived from |
 | `project` | string | Project name from the detected stack |
 | `entry_count` | integer | `entries.length`, for a cheap sanity check |
-| `entries[].key` | string | The human term, e.g. `"deals page"` |
-| `entries[].canonical_path` | string | Repo-relative path the term resolves to |
+| `entries[].key` | string | The term, normalized: lowercase, trimmed, no leading `/` or `_`, and `-`, `_` and whitespace runs as one space. Unique. |
+| `entries[].aliases` | string[] | Every spelling that normalizes to `key`, as written (`/x-y`, `x-y`, `x y`). Match a query against these, not only `key`. |
+| `entries[].canonical_path` | string \| null | **One** repo-relative file, the best location (for learned terms, the most used), or `null` when the term has no file (a feature directory only, or none). Never a list. Existed when the glossary was generated. |
+| `entries[].paths` | string[] | Every file the term resolves to, best first; `canonical_path` is `paths[0]`. Files only, each existed at generation time. |
+| `entries[].dirs` | string[] | Directories the term resolves to (frontend feature folders). Usually empty. |
 | `entries[].section` | string | Category: `feature`, `model`, `api`, `skill`, `command`, `learned` |
 | `entries[].description` | string \| null | Free text, or null |
+| `entries[].score` | number \| null | Learned terms: the session-mining score (frequency x recency). `null` for terms parsed from code. |
+| `entries[].specificity` | number \| null | Share (0-1) of the repo's source and doc files containing every word of `key`. High means generic: filter on it rather than rescanning the repo. `null` when there were no files to measure. |
+
+What is left out by default:
+
+- **Test files.** Models, routes and paths under `tests/`, `__tests__/`, or
+  named `test_*`, `*.test.*`, `*.spec.*`, `*_test.*` are not vocabulary.
+  `generate.py --include-tests` keeps them.
+- **Generic learned words.** A learned single-word term whose `specificity` is
+  above 0.20 (`config`, `errors`, `active`) is dropped.
+- **Gone locations.** A path that no longer exists is dropped on every run, and
+  a learned term with no file left is dropped with it.
 
 Entries are sorted by `key`. Keys are unique.
 
@@ -86,6 +111,24 @@ producer now hands over structured data and the question disappears.
 - An empty `entries` array is valid and means the map found no vocabulary. It
   is not an error condition — see
   [`grading-semantics.md`](../architecture/grading-semantics.md).
+
+### 2.0: what changed from 1.0
+
+Issue [#38](https://github.com/the-glitch-kingdom/babel-fish/issues/38),
+measured on a 1,168-entry FastAPI + React repo: a third of `canonical_path`
+values were comma-joined lists (up to 10 paths, directories and deleted files
+included), one term appeared under several spellings as several entries, test
+models were vocabulary, and generic learned words matched almost every query.
+
+- `canonical_path` changed meaning: one file or `null`, where 1.0 could hold
+  `"a.jsx, b.css, src"`. This is the breaking change behind the major bump.
+- New: `aliases`, `paths`, `dirs`, `score`, `specificity`.
+- Fewer entries: spellings are merged, test files, generic learned words and
+  learned terms with no existing file are dropped.
+
+A 1.0 reader that only reads `key` and `canonical_path` still works, but it
+sees normalized keys (`policy` instead of a separate `/policy` entry) and
+`null` where it got a list.
 
 ## Where the output actually lives
 

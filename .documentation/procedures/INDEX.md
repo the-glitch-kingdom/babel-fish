@@ -3,8 +3,9 @@ title: Procedures Documentation Index
 tier: reference
 domains: [procedures]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Complete listing of procedures documentation
 ---
 
@@ -23,9 +24,9 @@ purpose: Complete listing of procedures documentation
 
 ### Guides
 
-| Document | Status | Updated | Words |
-|----------|--------|---------|-------|
-| [Changing repo structure](changing-repo-structure.md) | active | 2026-09-30 | 696 |
+| Document | Status | Updated | Words | Purpose |
+|----------|--------|---------|-------|---------|
+| [Changing repo structure](changing-repo-structure.md) | active | 2026-09-30 | 696 | How to adopt the structure check, and recipes for adding, moving and retiring folders, apps, environments and repo pointers |
 
 ## Keywords
 
@@ -39,4 +40,4 @@ This domain covers: procedure, procedures, sop, standard-operating-procedure, st
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*

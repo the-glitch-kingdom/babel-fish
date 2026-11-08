@@ -166,7 +166,7 @@ def test_plugin_repo_map_is_not_empty(g):
     """The test that fails if #6 regresses."""
     skills = g.SkillParser().parse()
     vocab = g.VocabularyBuilder().build([], [], [], [], g.load_stack(), skills)
-    aliases = {v["alias"] for v in vocab}
+    aliases = {a for v in vocab for a in v["aliases"]}
     assert aliases, "a plugin repo produced an empty vocabulary — issue #6"
     assert "demo skill" in aliases or "demo-skill" in aliases, aliases
     assert "/deploy" in aliases, "commands should be reachable as /name"
@@ -209,12 +209,121 @@ def test_glossary_json_written_and_shaped(g):
     assert data["entry_count"] == len(data["entries"])
     assert data["schema_version"].count(".") == 1, data["schema_version"]
 
+    assert data["schema_version"] == "2.0", "#38 changed canonical_path's meaning"
     for e in data["entries"]:
-        assert set(e) == {"key", "canonical_path", "section", "description"}, e
+        assert set(e) == {"key", "aliases", "canonical_path", "paths", "dirs", "section",
+                          "description", "score", "specificity"}, e
         assert e["key"], e
     keys = [e["key"] for e in data["entries"]]
     assert keys == sorted(keys), "entries must be sorted by key"
     assert len(keys) == len(set(keys)), "keys must be unique"
+
+
+# ── Glossary quality (#38) ───────────────────────────────────────────────────
+
+def learned_glossary(g, learned: dict, corpus=(), include_tests=False) -> dict:
+    """learned-vocabulary.json -> glossary.json, through the same steps main() runs."""
+    import json
+    g.LEARNED_VOC.write_text(json.dumps(learned))
+    vocab = g.VocabularyBuilder().build([], [], [], [], g.load_stack(), g.SkillParser().parse())
+    vocab = g.finalize_vocab(vocab, [g.PROJECT_ROOT / c for c in corpus], include_tests)
+    data = json.loads(g.write_glossary(vocab, g.load_stack()).read_text())
+    return {e["key"]: e for e in data["entries"]}
+
+
+def test_learned_paths_are_single_existing_files(g):
+    """canonical_path was every target joined with ', ', directories and
+    deleted files included."""
+    (g.PROJECT_ROOT / "src").mkdir()
+    (g.PROJECT_ROOT / "src/deals.py").write_text("")
+    (g.PROJECT_ROOT / "tests").mkdir()
+    (g.PROJECT_ROOT / "tests/test_deals.py").write_text("")
+    learned = {"deal pipeline": {"score": 6.5, "source": "session-mined",
+               "targets": ["src/deals.py", "src", "gone.py", "tests/test_deals.py"]}}
+
+    e = learned_glossary(g, learned)["deal pipeline"]
+    assert e["canonical_path"] == "src/deals.py", e
+    assert e["paths"] == ["src/deals.py"], "files only; gone.py and the test file dropped"
+    assert e["dirs"] == ["src"], e
+    for entry in learned_glossary(g, learned).values():
+        assert "," not in (entry["canonical_path"] or ""), entry
+        for p in entry["paths"]:
+            assert (g.PROJECT_ROOT / p).is_file(), p
+
+    e = learned_glossary(g, learned, include_tests=True)["deal pipeline"]
+    assert "tests/test_deals.py" in e["paths"], "--include-tests keeps test files"
+
+
+def test_learned_entry_with_no_existing_file_is_dropped(g):
+    e = learned_glossary(g, {"old thing": {"score": 9, "source": "session-mined", "targets": ["gone.py"]}})
+    assert "old thing" not in e, e
+
+
+def test_spellings_share_one_entry(g):
+    """`/x-y`, `x y`, `x-y` for one path were three entries; `_Forbidding`
+    produced keys with a leading space and underscore."""
+    skills = [{"name": "x-y", "kind": "command", "file": "commands/deploy.md", "description": ""}]
+    models = [{"name": "_Forbidding", "file": "README.md"}]
+    vocab = g.VocabularyBuilder().build([], models, [], [], g.load_stack(), skills)
+    by_key = {v["alias"]: v for v in vocab}
+    assert set(by_key) == {"x y", "forbidding"}, sorted(by_key)
+    assert {"/x-y", "x y", "x-y"} <= set(by_key["x y"]["aliases"]), by_key["x y"]
+    for key in by_key:
+        assert key == key.strip() and not key.startswith(("_", "/")), repr(key)
+
+
+def test_score_and_specificity_are_numbers(g):
+    (g.PROJECT_ROOT / "src").mkdir()
+    (g.PROJECT_ROOT / "src/deals.py").write_text("class DealPipeline: pass\n")
+    (g.PROJECT_ROOT / "src/other.py").write_text("pass\n")
+    entries = learned_glossary(g, {"deal pipeline": {"score": 6.5, "source": "session-mined",
+                                                     "targets": ["src/deals.py"]}},
+                               corpus=["src/deals.py", "src/other.py"])
+    e = entries["deal pipeline"]
+    assert e["score"] == 6.5, e
+    assert e["specificity"] == 0.5, "camelCase in one of two files"
+    assert all(isinstance(x["specificity"], float) for x in entries.values()), entries
+    assert entries["deploy"]["score"] is None, "score is a learned field"
+
+
+def test_generic_learned_single_word_is_dropped(g):
+    for i in range(5):
+        (g.PROJECT_ROOT / f"f{i}.py").write_text("config = 1\n")
+    learned = {w: {"score": 9, "source": "session-mined", "targets": ["f0.py"]}
+               for w in ("config", "zebrafication")}
+    entries = learned_glossary(g, learned, corpus=[f"f{i}.py" for i in range(5)])
+    assert "config" not in entries, "in every file: a common word, not a name"
+    assert "zebrafication" in entries, entries
+
+
+def test_test_paths_detected(g):
+    for p in ("tests/a.py", "x/__tests__/b.ts", "test_c.py", "src/d.test.tsx",
+              "src/e.spec.js", "pkg/f_test.go"):
+        assert g.is_test_path(p), p
+    for p in ("src/latest.py", "src/contest.py", "testing/x.py", "src/attest.ts"):
+        assert not g.is_test_path(p), p
+
+
+def test_main_excludes_test_models(g):
+    """End to end through the real entry point: a model defined only in a test
+    file is not vocabulary unless --include-tests."""
+    import json, subprocess
+    (g.PROJECT_ROOT / "app").mkdir()
+    (g.PROJECT_ROOT / "app/models.py").write_text("class Invoice(Model):\n    total: int\n")
+    (g.PROJECT_ROOT / "tests").mkdir()
+    (g.PROJECT_ROOT / "tests/test_x.py").write_text("class _Forbidding(Model):\n    x: int\n")
+
+    def run(*flags):
+        subprocess.run([sys.executable, str(HERE / "generate.py"), "--force",
+                        "--project-root", str(g.PROJECT_ROOT), *flags],
+                       check=True, capture_output=True)
+        return json.loads(g.GLOSSARY.read_text())
+
+    data = run()
+    assert data["schema_version"] == "2.0"
+    keys = {e["key"] for e in data["entries"]}
+    assert "invoice" in keys and "forbidding" not in keys, keys
+    assert "forbidding" in {e["key"] for e in run("--include-tests")["entries"]}
 
 
 def test_glossary_source_path_is_real(g):

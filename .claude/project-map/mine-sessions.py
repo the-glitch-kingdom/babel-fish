@@ -214,17 +214,19 @@ def is_user_turn(msg: dict) -> bool:
 BASH_TOKEN_RE = re.compile(r'[\w./-]*[\w-]\.[A-Za-z0-9]{1,6}\b')
 
 
+def is_repo_file(project_root: Path, rel: str) -> bool:
+    try:
+        return (project_root / rel).is_file()
+    except OSError:
+        return False
+
+
 def extract_paths_from_bash(command: str, project_root: Path) -> list[str]:
     out = []
     for tok in BASH_TOKEN_RE.findall(command or ''):
         tok = tok.strip("'\"()[]{},;:").lstrip('./')
-        if not tok or tok.startswith('-'):
-            continue
-        try:
-            if (project_root / tok).is_file():
-                out.append(tok)
-        except OSError:
-            pass
+        if tok and not tok.startswith('-') and is_repo_file(project_root, tok):
+            out.append(tok)
     return out
 
 
@@ -256,12 +258,16 @@ def extract_file_paths_from_tool_calls(messages: list[dict]) -> list[str]:
                 if fp and isinstance(fp, str):
                     # Normalize to relative path
                     try:
-                        rel = Path(fp).relative_to(PROJECT_ROOT)
-                        paths.append(str(rel))
+                        rel = str(Path(fp).relative_to(PROJECT_ROOT))
                     except ValueError:
                         # Already relative or different root
-                        if not fp.startswith('/'):
-                            paths.append(fp)
+                        if fp.startswith('/'):
+                            continue
+                        rel = fp
+                    # Grep's path is usually a directory and Glob's pattern a glob:
+                    # only an existing file is a location (#38).
+                    if is_repo_file(PROJECT_ROOT, rel):
+                        paths.append(rel)
     return paths
 
 
@@ -387,13 +393,13 @@ class SessionMiner:
     def _record(self, alias: str, target: str, weight: float, date: datetime) -> None:
         if alias not in self._data:
             self._data[alias] = {
-                'targets': set(),
+                'targets': {},  # path -> hits
                 'raw_score': 0.0,
                 'last_seen': date.date().isoformat(),
                 'count': 0,
             }
         entry = self._data[alias]
-        entry['targets'].add(target)
+        entry['targets'][target] = entry['targets'].get(target, 0) + 1
         entry['raw_score'] += weight
         entry['count'] += 1
         if date.date().isoformat() > entry['last_seen']:
@@ -406,7 +412,8 @@ class SessionMiner:
             score = data['raw_score']
             if score >= MIN_SCORE:
                 out[alias] = {
-                    'targets': sorted(data['targets']),
+                    'targets': ordered_targets(data['targets']),
+                    'target_hits': dict(data['targets']),
                     'score': round(score, 2),
                     'count': data['count'],
                     'last_seen': data['last_seen'],
@@ -416,6 +423,29 @@ class SessionMiner:
 
 
 # ── Merge with existing learned vocabulary ────────────────────────────────────
+
+def ordered_targets(hits: dict) -> list[str]:
+    """Most-used first: generate.py takes the first as canonical_path."""
+    return sorted(hits, key=lambda t: (-hits[t], t))
+
+
+def target_hits(entry: dict) -> dict:
+    # Files written before #38 have a bare target list: one hit each.
+    return dict(entry.get('target_hits') or {t: 1 for t in entry.get('targets', [])})
+
+
+def prune_missing(vocab: dict) -> dict:
+    """Drop mined targets that were renamed or deleted, and entries left with none."""
+    out = {}
+    for alias, data in vocab.items():
+        if data.get('source') != 'session-mined':
+            out[alias] = data
+            continue
+        hits = {t: n for t, n in target_hits(data).items() if is_repo_file(PROJECT_ROOT, t)}
+        if hits:
+            out[alias] = {**data, 'targets': ordered_targets(hits), 'target_hits': hits}
+    return out
+
 
 def merge_learned(existing: dict, new: dict) -> dict:
     """
@@ -435,9 +465,11 @@ def merge_learned(existing: dict, new: dict) -> dict:
                 existing_entry.get('score', 0) + data['score'], 2
             )
             existing_entry['count'] = existing_entry.get('count', 0) + data['count']
-            existing_entry['targets'] = sorted(
-                set(existing_entry.get('targets', [])) | set(data['targets'])
-            )
+            hits = target_hits(existing_entry)
+            for t, n in target_hits(data).items():
+                hits[t] = hits.get(t, 0) + n
+            existing_entry['target_hits'] = hits
+            existing_entry['targets'] = ordered_targets(hits)
             if data['last_seen'] > existing_entry.get('last_seen', ''):
                 existing_entry['last_seen'] = data['last_seen']
         else:
@@ -539,7 +571,7 @@ def main() -> None:
             pass
 
     merged = merge_learned(existing, new_vocab)
-    merged = decay_old_entries(merged)
+    merged = prune_missing(decay_old_entries(merged))
 
     LEARNED_VOC.write_text(json.dumps(merged, indent=2, ensure_ascii=False), encoding='utf-8')
     save_cursor(newest)

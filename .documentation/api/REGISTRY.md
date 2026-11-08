@@ -3,8 +3,9 @@ title: API Registry
 tier: reference
 domains: [api]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Quick reference for api documentation
 ---
 
@@ -27,7 +28,7 @@ purpose: Quick reference for api documentation
 
 ## Recently Updated
 
-- [Babel-fish glossary contract](glossary-contract.md) - 2026-09-04
+- [Babel-fish glossary contract](glossary-contract.md) - 2026-11-07
 - [Skill parser contract](skill-parser-contract.md) - 2026-09-04
 
 ## By Status
@@ -50,4 +51,4 @@ purpose: Quick reference for api documentation
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*

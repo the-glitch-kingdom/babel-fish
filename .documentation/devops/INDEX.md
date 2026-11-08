@@ -3,8 +3,9 @@ title: DevOps Documentation Index
 tier: reference
 domains: [devops]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Complete listing of devops documentation
 ---
 
@@ -40,4 +41,4 @@ This domain covers: devops, deployment, deploy, ci, cd, ci/cd, pipeline, docker,
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*

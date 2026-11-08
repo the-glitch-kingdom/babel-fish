@@ -3,8 +3,9 @@ title: Agents Documentation Index
 tier: reference
 domains: [agents]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Complete listing of agents documentation
 ---
 
@@ -40,4 +41,4 @@ This domain covers: agent, agents, ai, assistant, expert, specialist, llm, langc
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*

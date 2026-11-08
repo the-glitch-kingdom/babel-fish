@@ -3,8 +3,9 @@ title: Architecture Documentation Index
 tier: reference
 domains: [architecture]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Complete listing of architecture documentation
 ---
 
@@ -23,11 +24,11 @@ purpose: Complete listing of architecture documentation
 
 ### References
 
-| Document | Status | Updated | Words |
-|----------|--------|---------|-------|
-| [Grading semantics](grading-semantics.md) | active | 2026-10-22 | 615 |
-| [Project map watch set](project-map-watch-set.md) | active | 2026-09-04 | 689 |
-| [Session vocabulary mining](session-vocabulary-mining.md) | active | 2026-09-04 | 654 |
+| Document | Status | Updated | Words | Purpose |
+|----------|--------|---------|-------|---------|
+| [Grading semantics](grading-semantics.md) | active | 2026-10-22 | 615 | What grader.py measures and what it deliberately does not, and why usefulness is warned about rather than scored |
+| [Project map watch set](project-map-watch-set.md) | active | 2026-09-04 | 689 | How generate.py decides which files can trigger a regeneration, and why the rules differ per file kind |
+| [Session vocabulary mining](session-vocabulary-mining.md) | active | 2026-09-04 | 654 | How mine-sessions.py turns Claude Code transcripts into learned aliases, and the transcript-shape assumptions it depends on |
 
 ## Keywords
 
@@ -40,4 +41,4 @@ This domain covers: architecture, design, system, system-design, pattern, patter
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*

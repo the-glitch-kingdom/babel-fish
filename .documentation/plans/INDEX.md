@@ -3,8 +3,9 @@ title: Plans Documentation Index
 tier: reference
 domains: [plans]
 status: active
-last_updated: '2026-10-28'
+last_updated: '2026-11-08'
 version: '1.0.0'
+generated: true
 purpose: Complete listing of plans documentation
 ---
 
@@ -40,4 +41,4 @@ This domain covers: plan, plans, planning, roadmap, proposal, proposals, rfc, de
 
 ---
 
-*Last updated: 2026-10-28*
+*Last updated: 2026-11-08*

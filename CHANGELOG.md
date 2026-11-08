@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- **BREAKING: `glossary.json` schema 2.0** (#38). `canonical_path` is one
+  existing file (the most used) or `null`, never a comma-joined list. Entries
+  gain `aliases` (every spelling of the term), `paths` (all files, best first),
+  `dirs`, `score` (learned) and `specificity` (share of repo files containing
+  the term). Spellings that differ only by case, separators or a leading `/` or
+  `_` are one entry, so `/status` and `status` are no longer two. Section 01
+  lists every spelling in the Alias cell. See
+  `.documentation/api/glossary-contract.md`.
+- **Test files are not vocabulary by default.** Models, routes and learned
+  paths in `tests/`, `__tests__/`, `test_*`, `*.test.*`, `*.spec.*` and
+  `*_test.*` are left out; `generate.py --include-tests` keeps them.
+- **Generic learned words are dropped.** A learned single word found in more
+  than 20% of the repo's files (`config`, `errors`) is not emitted.
+
+### Fixed
+
+- **Learned vocabulary held directories, globs and deleted files.** The miner
+  stored Grep's directory and Glob's pattern as locations and never pruned a
+  target; it now records existing files only, counts hits per file
+  (`target_hits`), and drops targets that no longer exist.
+
 ## [2.10.0] - 2026-10-28
 
 ### Added
