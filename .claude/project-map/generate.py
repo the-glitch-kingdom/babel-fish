@@ -70,7 +70,7 @@ SECRET_PATTERNS = re.compile(
     r'(?i:password|secret|token|api_key|apikey|private_key|auth_token|'
     r'access_key|secret_key|client_secret|db_pass|database_password|'
     r'stripe_key|twilio_auth|sendgrid_key|aws_secret)\s*[=:]\s*(?!\[)[^\s`|"\',]+'
-    r'|(?<=://)(?!\[REDACTED\])[^\s/@`|]+(?=@)'      # URL userinfo: postgres://user:pass@, DSN keys
+    r'|(?<=://)(?!\[REDACTED\])[^\s/@`|]+(?=@)'      # URL userinfo: the user:password part before '@' in a URL; DSN keys
     r'|\b[sr]k_(?:live|test)_[0-9A-Za-z]{8,}'        # Stripe
     r'|\bsk-[A-Za-z0-9_-]{16,}'                      # OpenAI / Anthropic style
     r'|\bgh[pousr]_[A-Za-z0-9]{20,}|\bgithub_pat_\w{20,}'

@@ -164,6 +164,20 @@ def test_secret_pattern_matches_generate(tmp):
     assert load_grader(tmp).SECRET_PATTERN.pattern == gen.SECRET_PATTERNS.pattern
 
 
+def test_installed_scripts_hold_no_credential_shaped_url():
+    """#40: a `postgres://user:pass@` example in a comment failed downstream secret scanners.
+    Covers what install.sh copies into a repo; tests stay in node_modules, which is ignored."""
+    import re
+    url_with_password = re.compile(r'[a-zA-Z][\w+.-]*://[^\s/@:]+:[^\s/@]+@')
+    install_sh = (HERE.parent / "install.sh").read_text()
+    installed = re.findall(r'cp .*project-map/([\w-]+\.py)"', install_sh)
+    assert {"generate.py", "grader.py"} <= set(installed), installed
+    hits = [f"{name}:{n}" for name in installed
+            for n, line in enumerate((HERE / name).read_text().splitlines(), 1)
+            if url_with_password.search(line)]
+    assert not hits, f"credential-shaped URL in an installed script: {hits}"
+
+
 def test_leak_is_caught_and_never_echoed(tmp):
     """The old pattern missed table cells and URL credentials, and quoted what it did find
     into the committed install report."""
