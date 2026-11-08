@@ -1,6 +1,6 @@
 {
   "schema_version": "2.0",
-  "generated_at": "2026-11-08T03:47:50Z",
+  "generated_at": "2026-11-08T03:50:53Z",
   "source": ".claude/project-map/sections/01-vocabulary.md",
   "project": "babel-fish",
   "entry_count": 7,
@@ -20,7 +20,7 @@
       "section": "skill",
       "description": "Full-stack developer context for any project with Babel Fish installed. Provides instant access to project map, vocabula",
       "score": null,
-      "specificity": 0.2
+      "specificity": 0.1957
     },
     {
       "key": "policy",
@@ -36,7 +36,7 @@
       "section": "command",
       "description": "Get or set the babel-fish update policy (auto | nudge | off)",
       "score": null,
-      "specificity": 0.2
+      "specificity": 0.1957
     },
     {
       "key": "relink",
@@ -52,7 +52,7 @@
       "section": "command",
       "description": "Re-run the skill linker — refresh symlinks from node_modules into .claude/skills/",
       "score": null,
-      "specificity": 0.1111
+      "specificity": 0.1087
     },
     {
       "key": "semantic first",
@@ -68,7 +68,7 @@
       "section": "skill",
       "description": "Route documentation lookups, internal procedure questions, repo architectural/vocabulary/convention questions, and resea",
       "score": null,
-      "specificity": 0.0667
+      "specificity": 0.0652
     },
     {
       "key": "status",
@@ -84,7 +84,7 @@
       "section": "command",
       "description": "Show installed version, latest available version, current update policy, and hook registration state",
       "score": null,
-      "specificity": 0.6889
+      "specificity": 0.6957
     },
     {
       "key": "structure bootstrap",
@@ -100,7 +100,7 @@
       "section": "skill",
       "description": "Set up, adopt or change a repo's structure manifest (.claude/structure.toml) — the approved folders, what each may hold,",
       "score": null,
-      "specificity": 0.1556
+      "specificity": 0.1522
     },
     {
       "key": "update",
@@ -116,7 +116,7 @@
       "section": "command",
       "description": "Update babel-fish to the latest version (runs npm update + re-links skills)",
       "score": null,
-      "specificity": 0.3111
+      "specificity": 0.3261
     }
   ]
 }
