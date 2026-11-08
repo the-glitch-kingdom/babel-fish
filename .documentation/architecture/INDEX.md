@@ -27,7 +27,7 @@ purpose: Complete listing of architecture documentation
 | Document | Status | Updated | Words | Purpose |
 |----------|--------|---------|-------|---------|
 | [Grading semantics](grading-semantics.md) | active | 2026-10-22 | 615 | What grader.py measures and what it deliberately does not, and why usefulness is warned about rather than scored |
-| [Project map watch set](project-map-watch-set.md) | active | 2026-09-04 | 689 | How generate.py decides which files can trigger a regeneration, and why the rules differ per file kind |
+| [Project map watch set](project-map-watch-set.md) | active | 2026-11-07 | 915 | How generate.py decides which files can trigger a regeneration, and why the rules differ per file kind |
 | [Session vocabulary mining](session-vocabulary-mining.md) | active | 2026-09-04 | 654 | How mine-sessions.py turns Claude Code transcripts into learned aliases, and the transcript-shape assumptions it depends on |
 
 ## Keywords

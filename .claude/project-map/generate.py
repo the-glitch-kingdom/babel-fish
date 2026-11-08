@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import ast
 import argparse
+import functools
 import hashlib
 import json
+import os
 from fnmatch import fnmatch
 import re
 import subprocess
@@ -128,14 +130,41 @@ IGNORE_DIRS = {
     '.claude', '.planning',
 }
 
+def repo_files() -> list[Path]:
+    """Every file under PROJECT_ROOT that git does not ignore, minus IGNORE_DIRS, sorted.
+
+    The one listing every scan uses: whole-tree rglob visited every gitignored cache
+    (#43: 94,787 files on a real repo, 92,460 of them ignored, ~2 GB read). Outside a
+    git work tree, os.walk prunes IGNORE_DIRS before descending. Not cached: callers
+    add and delete files between calls, and a listing costs ~10 ms.
+    """
+    try:
+        out = subprocess.run(
+            ['git', '-C', str(PROJECT_ROOT), 'ls-files', '-z', '--cached', '--others', '--exclude-standard'],
+            capture_output=True, check=True, timeout=60).stdout
+        rels = [r for r in out.decode('utf-8', 'replace').split('\0') if r]
+    except (OSError, subprocess.SubprocessError):
+        rels = []
+        for root, dirs, names in os.walk(PROJECT_ROOT):
+            dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+            base = Path(root).relative_to(PROJECT_ROOT)
+            rels += [(base / n).as_posix() for n in names]
+    # IGNORE_DIRS still apply to tracked files (.claude/ is tracked but never mapped).
+    return sorted(f for f in (PROJECT_ROOT / r for r in rels
+                              if IGNORE_DIRS.isdisjoint(r.split('/')[:-1]))
+                  if f.is_file())
+
+
+def _rel(f: Path) -> str:
+    """Posix path relative to PROJECT_ROOT. String slicing: Path.relative_to on
+    every repo file cost more than the rest of the walk (#43)."""
+    return f.as_posix()[len(PROJECT_ROOT.as_posix()) + 1:]
+
+
 def collect_watched_files() -> list[Path]:
     result = []
-    for path in sorted(PROJECT_ROOT.rglob('*')):
-        if any(p in IGNORE_DIRS for p in path.parts):
-            continue
-        if not path.is_file():
-            continue
-        rel = path.relative_to(PROJECT_ROOT).as_posix()
+    for path in repo_files():
+        rel = _rel(path)
         if (path.suffix in WATCHED_EXTENSIONS
                 or path.name in WATCHED_NAMES
                 or any(fnmatch(rel, g) for g in WATCHED_GLOBS)):
@@ -146,19 +175,15 @@ def collect_watched_files() -> list[Path]:
 def collect_doc_files() -> list[Path]:
     """Docs section 19 points at. Hashed by path only — see compute_checksum."""
     docs = []
-    for doc_dir in DOC_DIRS:
-        d = PROJECT_ROOT / doc_dir
-        if d.is_dir():
-            docs.extend(
-                f for f in d.rglob('*')
-                if f.is_file()
-                and f.suffix in DOC_EXTS
-                and f.name not in DOC_SKIP_NAMES
-                and not (DOC_SKIP_DIRS & set(f.relative_to(PROJECT_ROOT).parts))
-            )
-    # Root-level docs, matching build_doc_pointers_section()'s own glob.
-    docs.extend(f for f in PROJECT_ROOT.glob('*.md') if f.is_file())
-    return sorted(set(docs))
+    for f in repo_files():
+        parts = _rel(f).split('/')
+        if len(parts) == 1:
+            if f.suffix == '.md':  # root-level docs
+                docs.append(f)
+        elif (parts[0] in DOC_DIRS and f.suffix in DOC_EXTS
+              and f.name not in DOC_SKIP_NAMES and not DOC_SKIP_DIRS & set(parts)):
+            docs.append(f)
+    return docs
 
 def compute_checksum(files: list[Path], doc_files: list[Path] | None = None) -> str:
     h = hashlib.sha256()
@@ -224,6 +249,22 @@ def load_stack(stack_json_path: Path | None = None) -> dict:
 
 # ── Python / FastAPI / Django / Flask ────────────────────────────────────────
 
+@functools.lru_cache(maxsize=None)
+def _parse_cached(path: str, mtime_ns: int, size: int) -> tuple[str, ast.AST | None]:
+    source = Path(path).read_text(encoding='utf-8', errors='replace')
+    try:
+        return source, ast.parse(source, filename=path)
+    except (SyntaxError, ValueError):  # ValueError: null bytes
+        return source, None
+
+
+def parse_python(f: Path) -> tuple[str, ast.AST | None]:
+    """(source, tree or None), parsed once per run however many parsers ask (#43).
+    Keyed by mtime and size, so an edited file is parsed again."""
+    st = f.stat()
+    return _parse_cached(str(f), st.st_mtime_ns, st.st_size)
+
+
 class PythonRouteParser:
     """Extract routes from Python routers using ast."""
 
@@ -236,12 +277,9 @@ class PythonRouteParser:
         for f in files:
             if f.suffix != '.py':
                 continue
-            try:
-                source = f.read_text(encoding='utf-8', errors='replace')
-                tree = ast.parse(source, filename=str(f))
+            source, tree = parse_python(f)
+            if tree is not None:
                 routes.extend(self._extract_routes(tree, f, source))
-            except SyntaxError:
-                pass
         return routes
 
     def _extract_routes(self, tree: ast.AST, filepath: Path, source: str) -> list[dict]:
@@ -283,12 +321,9 @@ class PythonModelParser:
         for f in files:
             if f.suffix != '.py':
                 continue
-            try:
-                source = f.read_text(encoding='utf-8', errors='replace')
-                tree = ast.parse(source, filename=str(f))
+            source, tree = parse_python(f)
+            if tree is not None:
                 models.extend(self._extract_models(tree, f))
-            except SyntaxError:
-                pass
         return models
 
     def _extract_models(self, tree: ast.AST, filepath: Path) -> list[dict]:
@@ -353,12 +388,9 @@ class PythonSchemaParser:
         for f in files:
             if f.suffix != '.py':
                 continue
-            try:
-                source = f.read_text(encoding='utf-8', errors='replace')
-                tree = ast.parse(source, filename=str(f))
+            source, tree = parse_python(f)
+            if tree is not None:
                 schemas.extend(self._extract_schemas(tree, f))
-            except SyntaxError:
-                pass
         return schemas
 
     def _extract_schemas(self, tree: ast.AST, filepath: Path) -> list[dict]:
@@ -664,37 +696,32 @@ class MigrationParser:
     def parse(self) -> list[dict]:
         migrations = []
         # Alembic
-        alembic_dirs = list(PROJECT_ROOT.rglob('versions'))
-        for d in alembic_dirs:
-            if not d.is_dir():
-                continue
-            for f in sorted(d.glob('*.py')):
-                try:
-                    source = f.read_text(encoding='utf-8', errors='replace')
-                    rev = re.search(r'revision\s*=\s*[\'"]([^\'"]+)[\'"]', source)
-                    down = re.search(r'down_revision\s*=\s*[\'"]?([^\'")\n]+)[\'"]?', source)
-                    tables = re.findall(r'op\.(?:create_table|drop_table|add_column)\s*\(\s*[\'"]([^\'"]+)[\'"]', source)
-                    migrations.append({
-                        'revision': rev.group(1) if rev else f.stem,
-                        'down_revision': down.group(1).strip() if down else None,
-                        'tables_affected': list(set(tables)),
-                        'file': str(f.relative_to(PROJECT_ROOT)),
-                        'type': 'alembic',
-                    })
-                except Exception:
-                    pass
+        files = repo_files()
+        for f in (f for f in files if f.parent.name == 'versions' and f.suffix == '.py'):
+            try:
+                source = f.read_text(encoding='utf-8', errors='replace')
+                rev = re.search(r'revision\s*=\s*[\'"]([^\'"]+)[\'"]', source)
+                down = re.search(r'down_revision\s*=\s*[\'"]?([^\'")\n]+)[\'"]?', source)
+                tables = re.findall(r'op\.(?:create_table|drop_table|add_column)\s*\(\s*[\'"]([^\'"]+)[\'"]', source)
+                migrations.append({
+                    'revision': rev.group(1) if rev else f.stem,
+                    'down_revision': down.group(1).strip() if down else None,
+                    'tables_affected': sorted(set(tables)),
+                    'file': str(f.relative_to(PROJECT_ROOT)),
+                    'type': 'alembic',
+                })
+            except Exception:
+                pass
 
         # SQL files
-        for f in sorted(PROJECT_ROOT.rglob('*.sql')):
-            if any(p in IGNORE_DIRS for p in f.parts):
-                continue
+        for f in (f for f in files if f.suffix == '.sql'):
             try:
                 source = f.read_text(encoding='utf-8', errors='replace')[:2000]
                 tables = re.findall(r'(?:CREATE|ALTER|DROP)\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(\w+)', source, re.IGNORECASE)
                 if tables:
                     migrations.append({
                         'revision': f.stem,
-                        'tables_affected': list(set(tables)),
+                        'tables_affected': sorted(set(tables)),
                         'file': str(f.relative_to(PROJECT_ROOT)),
                         'type': 'sql',
                     })
@@ -718,6 +745,7 @@ class FrontendScanner:
 
     def scan(self) -> list[dict]:
         features, seen = [], set()
+        files = repo_files()
         for prefix in self.SEARCH_PREFIXES:
             base = PROJECT_ROOT / prefix if prefix else PROJECT_ROOT
             for feat_dir_name in self.FEATURE_DIRS:
@@ -730,7 +758,7 @@ class FrontendScanner:
                     rp = entry.resolve()
                     if rp in seen:
                         continue  # already counted via another prefix
-                    stats = self._scan_feature_dir(entry)
+                    stats = self._scan_feature_dir(entry, files)
                     # Only emit dirs that actually contain frontend components, so a
                     # backend package named e.g. 'app/' is not misread as a feature.
                     if stats['component_count'] + stats['hook_count'] == 0:
@@ -741,9 +769,10 @@ class FrontendScanner:
                     features.append(stats)
         return features
 
-    def _scan_feature_dir(self, d: Path) -> dict:
+    def _scan_feature_dir(self, d: Path, files: list[Path]) -> dict:
         components, hooks, stores, api_files = [], [], [], []
-        for f in d.rglob('*'):
+        prefix = d.as_posix() + '/'
+        for f in (f for f in files if f.as_posix().startswith(prefix)):
             if f.suffix in self.COMPONENT_EXTS:
                 if self.HOOK_PATTERN.match(f.stem):
                     hooks.append(f.name)
@@ -788,8 +817,7 @@ class ImportChainTracer:
             return []
         result = [str(f.relative_to(PROJECT_ROOT))]
         try:
-            source = f.read_text(encoding='utf-8', errors='replace')
-            tree = ast.parse(source)
+            _, tree = parse_python(f)
             for node in ast.walk(tree):
                 if isinstance(node, (ast.Import, ast.ImportFrom)):
                     if isinstance(node, ast.ImportFrom) and node.module:
@@ -824,6 +852,8 @@ def is_test_path(rel: str) -> bool:
 # A learned single word found in more than this share of files is a common word,
 # not a name for something (#38: `active`, `config`, `errors`).
 GENERIC_LEARNED_SHARE = 0.20
+# Generated blobs (embeddings, coverage, lockfiles) say nothing about vocabulary.
+MAX_TOKEN_FILE_BYTES = 1_000_000
 
 
 def finalize_vocab(vocab: list[dict], corpus: list[Path], include_tests: bool = False) -> list[dict]:
@@ -834,14 +864,26 @@ def finalize_vocab(vocab: list[dict], corpus: list[Path], include_tests: bool = 
     and `specificity` — the share of `corpus` files containing every word of the
     term — is recorded so consumers can drop generic terms without a rescan.
     """
-    tokens = []
+    # One pass: count, per term, the files holding all its words. Testing every term
+    # against every file's token set was ~79M steps on a real repo (#43).
+    terms = {tuple(v['alias'].split()) for v in vocab} - {()}
+    needed = {w for t in terms for w in t}
+    hits: dict[tuple[str, ...], int] = dict.fromkeys(terms, 0)
+    n_files = 0
     for f in corpus:
         try:
+            if f.stat().st_size > MAX_TOKEN_FILE_BYTES:
+                continue
             text = f.read_text(encoding='utf-8', errors='replace')
         except OSError:
             continue
+        n_files += 1
         # DealPipeline, deal_pipeline and deal-pipeline all yield {deal, pipeline}.
-        tokens.append(set(re.findall(r'[a-z0-9]+', re.sub(r'([a-z0-9])([A-Z])', r'\1 \2', text).lower())))
+        present = needed.intersection(
+            re.findall(r'[a-z0-9]+', re.sub(r'([a-z0-9])([A-Z])', r'\1 \2', text).lower()))
+        for t in terms:
+            if present.issuperset(t):
+                hits[t] += 1
 
     out = []
     for v in vocab:
@@ -849,8 +891,7 @@ def finalize_vocab(vocab: list[dict], corpus: list[Path], include_tests: bool = 
         files = [p for p in given if (PROJECT_ROOT / p).is_file()]
         dirs = [p for p in given if (PROJECT_ROOT / p).is_dir()]
         words = v['alias'].split()
-        share = (round(sum(all(w in t for w in words) for t in tokens) / len(tokens), 4)
-                 if tokens and words else None)
+        share = round(hits[tuple(words)] / n_files, 4) if n_files and words else None
         if v.get('paths') and not (files or dirs):
             continue  # every location is gone or a test file
         if v['type'] == 'learned' and (not files or (len(words) == 1 and (share or 0) > GENERIC_LEARNED_SHARE)):
@@ -1139,9 +1180,7 @@ class AuthScanner:
             'firebase': ['initializeApp', 'getAuth', 'signInWithEmailAndPassword'],
         }
 
-        for f in PROJECT_ROOT.rglob('*'):
-            if any(p in IGNORE_DIRS for p in f.parts):
-                continue
+        for f in repo_files():
             if f.suffix not in ('.py', '.ts', '.tsx', '.js', '.jsx'):
                 continue
             try:
@@ -1165,9 +1204,7 @@ class ReverseProxyScanner:
     def scan(self) -> list[dict]:
         rules = []
         # nginx
-        for f in PROJECT_ROOT.rglob('*.conf'):
-            if any(p in IGNORE_DIRS for p in f.parts):
-                continue
+        for f in (f for f in repo_files() if f.suffix == '.conf'):
             try:
                 source = f.read_text(encoding='utf-8', errors='replace')
                 for m in re.finditer(r'location\s+([^\s{]+)\s*\{[^}]*proxy_pass\s+([^;]+);', source, re.DOTALL):
@@ -1363,10 +1400,9 @@ def build_services_section(routes: list[dict], models: list[dict]) -> str:
 def build_background_jobs_section() -> str:
     lines = ["# Section 08 — Background Jobs\n\n"]
     jobs = []
+    py_files = [f for f in repo_files() if f.suffix == '.py']
     # Celery
-    for f in PROJECT_ROOT.rglob('*.py'):
-        if any(p in IGNORE_DIRS for p in f.parts):
-            continue
+    for f in py_files:
         try:
             source = f.read_text(encoding='utf-8', errors='replace')
             for m in re.finditer(r'@(?:app|celery)\.task|@shared_task', source):
@@ -1378,9 +1414,7 @@ def build_background_jobs_section() -> str:
         except Exception:
             pass
     # Cron / APScheduler
-    for f in PROJECT_ROOT.rglob('*.py'):
-        if any(p in IGNORE_DIRS for p in f.parts):
-            continue
+    for f in py_files:
         try:
             source = f.read_text(encoding='utf-8', errors='replace')
             for m in re.finditer(r'@scheduler\.scheduled_job|scheduler\.add_job|@cron', source):

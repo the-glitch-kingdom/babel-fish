@@ -29,8 +29,8 @@ purpose: Quick reference for architecture documentation
 
 ## Recently Updated
 
+- [Project map watch set](project-map-watch-set.md) - 2026-11-07
 - [Grading semantics](grading-semantics.md) - 2026-10-22
-- [Project map watch set](project-map-watch-set.md) - 2026-09-04
 - [Session vocabulary mining](session-vocabulary-mining.md) - 2026-09-04
 
 ## By Status

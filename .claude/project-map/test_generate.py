@@ -326,6 +326,74 @@ def test_main_excludes_test_models(g):
     assert "forbidding" in {e["key"] for e in run("--include-tests")["entries"]}
 
 
+# ── Regeneration speed (#43) ─────────────────────────────────────────────────
+
+def test_repo_files_skips_gitignored_files(g):
+    """Whole-tree rglob read 92,460 gitignored cache files on a real repo."""
+    import subprocess
+    root = g.PROJECT_ROOT
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    (root / ".gitignore").write_text(".mypy_cache/\n")
+    (root / ".mypy_cache").mkdir()
+    (root / ".mypy_cache/deal.data.json").write_text('{"deal": 1}')
+    (root / "untracked.py").write_text("x = 1\n")  # not ignored, not yet added
+    files = {g._rel(f) for f in g.repo_files()}
+    assert ".mypy_cache/deal.data.json" not in files, files
+    assert "untracked.py" in files and "install.sh" in files, files
+    assert ".mypy_cache/deal.data.json" not in {g._rel(f) for f in g.collect_watched_files()}
+
+
+def test_repo_files_prunes_ignore_dirs_outside_git(g):
+    (g.PROJECT_ROOT / "node_modules/pkg").mkdir(parents=True)
+    (g.PROJECT_ROOT / "node_modules/pkg/index.js").write_text("")
+    files = {g._rel(f) for f in g.repo_files()}
+    assert "install.sh" in files, files
+    assert not any(f.startswith("node_modules/") for f in files), files
+
+
+def test_specificity_one_pass_matches_brute_force(g):
+    root = g.PROJECT_ROOT
+    (root / "a.py").write_text("class DealPipeline: pass\n")
+    (root / "b.py").write_text("deal = 1\n")
+    (root / "big.json").write_text("deal pipeline " * 100_000)  # > 1 MB: skipped
+    vocab = [{"alias": "deal pipeline", "type": "model", "paths": []},
+             {"alias": "deal", "type": "model", "paths": []}]
+    out = {v["alias"]: v["specificity"]
+           for v in g.finalize_vocab(vocab, [root / "a.py", root / "b.py", root / "big.json"])}
+    assert out == {"deal pipeline": 0.5, "deal": 1.0}, out
+
+
+def test_python_file_parsed_once_across_parsers(g):
+    f = g.PROJECT_ROOT / "models.py"
+    f.write_text("class Invoice(Model):\n    total: int\n")
+    for parser in (g.PythonRouteParser(), g.PythonModelParser(), g.PythonSchemaParser()):
+        parser.parse([f])
+    info = g._parse_cached.cache_info()
+    assert (info.misses, info.hits) == (1, 2), info
+    f.write_text("class Invoice(Model):\n    total: int\n    paid: bool\n")
+    assert [m["name"] for m in g.PythonModelParser().parse([f])] == ["Invoice"]
+    assert g._parse_cached.cache_info().misses == 2, "an edited file must be parsed again"
+
+
+def test_unchanged_tree_gives_identical_sections(g):
+    """tables_affected was list(set(...)): hash order, so every run rewrote 11-migrations.md."""
+    import os, subprocess
+    root = g.PROJECT_ROOT
+    (root / "alembic/versions").mkdir(parents=True)
+    (root / "alembic/versions/001_init.py").write_text(
+        "revision = '001'\ndown_revision = None\n" + "".join(
+            f"op.create_table('{t}')\n" for t in ("invoices", "payments", "customers", "ledgers", "orders")))
+
+    def sections(seed):
+        subprocess.run([sys.executable, str(HERE / "generate.py"), "--force", "--project-root", str(root)],
+                       check=True, capture_output=True, env={**os.environ, "PYTHONHASHSEED": seed})
+        return {p.name: p.read_bytes() for p in sorted(g.SECTIONS_DIR.glob("*.md"))}
+
+    first = sections("1")
+    assert b"customers, invoices, ledgers" in first["11-migrations.md"], first["11-migrations.md"]
+    assert sections("2") == first, "two runs on an unchanged tree differ"
+
+
 def test_glossary_source_path_is_real(g):
     """v1.0 of the contract named `.babel-fish/`, which was never written."""
     import json

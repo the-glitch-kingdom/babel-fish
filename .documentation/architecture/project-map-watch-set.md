@@ -3,8 +3,8 @@ title: Project map watch set
 tier: reference
 domains: [architecture]
 status: active
-last_updated: '2026-09-04'
-version: '1.0.0'
+last_updated: '2026-11-07'
+version: '1.1.0'
 purpose: How generate.py decides which files can trigger a regeneration, and why the rules differ per file kind
 ---
 
@@ -12,7 +12,7 @@ purpose: How generate.py decides which files can trigger a regeneration, and why
 
 `generate.py` regenerates the project map only when its inputs change. What
 counts as an input is decided by `collect_watched_files()` and
-`collect_doc_files()`, and the rules deliberately differ by file kind. This is
+`collect_doc_files()`, both filtered from `repo_files()`, and the rules deliberately differ by file kind. This is
 the least obvious mechanism in the codebase and the one most likely to be
 "simplified" into a bug.
 
@@ -24,6 +24,35 @@ the least obvious mechanism in the codebase and the one most likely to be
 | Manifests (`package.json`, `Makefile`, …) | filename | yes | full regeneration |
 | Skill / command manifests | **path glob** | yes | full regeneration |
 | Documentation (`.md`, `.rst`, …) | directory + extension | **no** | nothing |
+
+## Every scan starts from one file list: `repo_files()`
+
+No scan walks the tree itself. `repo_files()` lists
+`git ls-files --cached --others --exclude-standard`, which is tracked files
+plus untracked files that git does not ignore, then drops anything under
+`IGNORE_DIRS` (`.claude/` is tracked but never mapped). Outside a git work tree
+it falls back to `os.walk`, which prunes `IGNORE_DIRS` *before* descending.
+Every consumer filters this list: the watch set, the docs list, migrations,
+feature dirs, auth, proxy configs and background jobs.
+
+**A gitignored file is never watched, read, tokenized or parsed.** Before #43
+each scan ran its own `PROJECT_ROOT.rglob(...)` and filtered afterwards. On a
+real repo the walk returned 94,787 files, of which 92,460 were gitignored (mypy
+cache, search indexes, coverage), and 3.0.0's `specificity` read about 2 GB of
+them. A full regeneration went from 14.8 s to 78.6 s
+([#43](https://github.com/the-glitch-kingdom/babel-fish/issues/43)).
+
+Two traps when you change this:
+
+- **Don't cache the list across calls.** Callers, the tests included, add and
+  delete files between calls, and a listing costs about 10 ms.
+- **Compute relative paths with `_rel()`, not `Path.relative_to()`.** On every
+  repo file, `relative_to()` and `in f.parents` cost more than the whole rest
+  of the walk.
+
+Python files are parsed once per run (`parse_python()`, keyed by path, mtime
+and size) and shared by the route, model and schema parsers and the import
+tracer.
 
 ## Why skills match on path, not extension
 

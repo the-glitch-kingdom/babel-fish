@@ -26,7 +26,7 @@ purpose: Complete listing of api documentation
 
 | Document | Status | Updated | Words | Purpose |
 |----------|--------|---------|-------|---------|
-| [Babel-fish glossary contract](glossary-contract.md) | active | 2026-11-07 | 994 | The glossary.json artifact babel-fish emits for machine consumers, and the stability rules around it |
+| [Babel-fish glossary contract](glossary-contract.md) | active | 2026-11-07 | 1,008 | The glossary.json artifact babel-fish emits for machine consumers, and the stability rules around it |
 | [Skill parser contract](skill-parser-contract.md) | active | 2026-09-04 | 472 | Which frontmatter fields SkillParser reads from skill and command manifests, and how they become vocabulary entries |
 
 ## Keywords

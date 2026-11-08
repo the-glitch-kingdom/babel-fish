@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- **Regeneration was 5x slower in 3.0.0** (#43: 14.8 s to 78.6 s on a real
+  repo). `specificity` tokenized every file the tree walk found, gitignored
+  caches included (92,460 of 94,787 files), and tested every term against every
+  file. Every scan now starts from one listing,
+  `git ls-files --cached --others --exclude-standard`, or outside git an
+  `os.walk` that prunes `IGNORE_DIRS`. A gitignored file is never read.
+  Specificity is counted in one pass, skipping files over 1 MB, and each Python
+  file is parsed once per run. On a synthetic repo with 2,271 tracked files and
+  532 MB of ignored caches: a full run went from 24.6 s to 2.15 s, a no-change
+  run from 1.60 s to 0.13 s.
+- **`specificity` counted gitignored files**, so caches made generic words look
+  rare and kept them as learned terms. It now counts only files git does not
+  ignore.
+- **`sections/11-migrations.md` changed on every run.** `tables_affected` was
+  written in hash order. It is sorted now, so an unchanged tree gives
+  byte-identical sections.
+
 ## [3.0.0] - 2026-11-07
 
 ### Changed
