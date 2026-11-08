@@ -22,6 +22,11 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **Secret scanners flagged `generate.py` and `grader.py` in installed repos**
+  (#40). A comment beside the redaction pattern held a database URL with a
+  password as its example, so gitleaks' common `database-url-password` rule
+  failed the PR taking a babel-fish update. The comment now describes the shape
+  without writing one, and a test scans every script `install.sh` copies.
 - **Learned vocabulary held directories, globs and deleted files.** The miner
   stored Grep's directory and Glob's pattern as locations and never pruned a
   target; it now records existing files only, counts hits per file
