@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Git-workflow rule 7: clean up after a merge.** Sync `main`, then delete the
+  branch locally and on the remote (`git branch -d <branch> && git push origin
+  --delete <branch> && git fetch --prune`). `-d`, never `-D`, so an unmerged
+  branch is refused; after a squash merge, confirm the PR merged before `-D`. It
+  replaces rule 3's closing "sync and delete the branch". New installs only: the
+  rule is written once.
+
 ## [3.0.2] - 2026-11-09
 
 ### Changed
