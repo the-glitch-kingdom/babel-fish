@@ -2,9 +2,9 @@
 
 > Written once by babel-fish; yours to edit.
 
-1. **ALWAYS branch first.** On `main` or any shared branch, run
-   `git checkout -b <type>/<short-description>` (`feat/`, `fix/`, `docs/`, `chore/`) before any
-   change, however small.
+1. **ALWAYS cut a branch from `main` before any change**, however small:
+   `git checkout -b <type>/<short-description> main` (`feat/`, `fix/`, `docs/`, `chore/`). Never
+   branch from another feature branch unless the user asks.
 2. **ALWAYS start from an up-to-date `main`**, at session start and after every merge:
    `git checkout main && git fetch origin main && git merge --ff-only origin/main`
 3. **Branch → commit → push the branch → PR against `main` → stop and wait.** Report

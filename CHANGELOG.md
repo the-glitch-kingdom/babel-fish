@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- **The git-workflow rule now says where a branch starts.** Rule 1 read "branch
+  first" and only implied `main`, so a branch cut while on another feature branch
+  stacked on it. It now reads "cut a branch from `main`", with the base in the
+  command (`git checkout -b <type>/<desc> main`), and never from another feature
+  branch unless the user asks. New installs only: the rule is written once, so an
+  existing `.claude/rules/git-workflow.md` keeps its wording until edited.
+
 ## [3.0.1] - 2026-11-07
 
 ### Fixed
