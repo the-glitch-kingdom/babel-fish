@@ -2,9 +2,9 @@
 
 > Written once by babel-fish; yours to edit.
 
-1. **ALWAYS branch first.** On `{{DEFAULT_BRANCH}}` or any shared branch, run
-   `git checkout -b <type>/<short-description>` (`feat/`, `fix/`, `docs/`, `chore/`) before any
-   change, however small.
+1. **ALWAYS cut a branch from `{{DEFAULT_BRANCH}}` before any change**, however small:
+   `git checkout -b <type>/<short-description> {{DEFAULT_BRANCH}}` (`feat/`, `fix/`, `docs/`, `chore/`). Never
+   branch from another feature branch unless the user asks.
 2. **ALWAYS start from an up-to-date `{{DEFAULT_BRANCH}}`**, at session start and after every merge:
    `git checkout {{DEFAULT_BRANCH}} && git fetch origin {{DEFAULT_BRANCH}} && git merge --ff-only origin/{{DEFAULT_BRANCH}}`
 3. **Branch → commit → push the branch → PR against `{{DEFAULT_BRANCH}}` → stop and wait.** Report
