@@ -229,7 +229,7 @@ A repo that already has a runbook keeps it; the installer appends the template's
 
 ## Standards Rules
 
-`init` also writes nine rules into `.claude/rules/`. Six load every session. `dependency-versions.md`, `docker-volumes.md` and `code-hygiene.md` carry `paths:` frontmatter, so Claude Code loads them only when Claude works with a matching file (a manifest, Dockerfile, compose file, CI workflow or source file):
+`init` also writes ten rules into `.claude/rules/`. Six load every session. `dependency-versions.md`, `docker-volumes.md`, `code-hygiene.md` and `database-schema.md` carry `paths:` frontmatter, so Claude Code loads them only when Claude works with a matching file (a manifest, Dockerfile, compose file, CI workflow, source file, migration or model):
 
 | File | Says |
 |------|------|
@@ -241,6 +241,7 @@ A repo that already has a runbook keeps it; the installer appends the template's
 | `repo-structure.md` | Decide where a file belongs before creating it: follow `.claude/structure.toml` when there is one; otherwise suggest setting one up (`--detect`, `structure-bootstrap`) and use the default layout for anything the repo has no place for; no catch-all folders |
 | `code-hygiene.md` | Remove dead code in the change that kills it; delete debug and scaffolding code before committing; propose, don't silently delete, dead code you didn't create |
 | `test-strategy.md` | Every new test proven to fail against broken code before it is trusted; each behavior tested once, at the lowest level that proves it (mostly unit, integration at the seams, a few end-to-end journeys); extend or parametrize an existing test before adding one, share expensive setup per run; no `sleep`, fakes for network and clock, parallel-safe, flaky tests fixed not retried, slowest tests watched; tests only in the test folder; delete tests of removed code, never skip a failing one |
+| `database-schema.md` | Every schema change is a migration; never edit one that has run; every migration idempotent (guarded DDL, upserts, proven by running it twice) and reversible; changes in steps that never break the running app; constraints and indexes in the database; data changes in their own migration; no destructive migration without permission and a backup; follow the existing naming |
 | `tool-registry.md` | One pointer record per CLI, MCP server, SDK, credential or integration (name, purpose, the trap if any, `→` doc); the detail goes in a doc, the hewtd way when hit-em-with-the-docs is installed; updated in the same change as the tool; no secrets. A repo that already has a tool registry keeps it and gets this "Adding a tool" section appended instead |
 
 Each is written **once** and then belongs to the repo: re-running the installer never overwrites it. A rule is skipped entirely when the repo already has one on the same topic (an existing `secrets.md` means no `secrets-management.md`). The default branch is read from `origin/HEAD`, falling back to `main` (or `master` when that is the only branch).
@@ -315,6 +316,7 @@ Or ask Claude to *"set up the repo structure"*. The `structure-bootstrap` skill 
 │   ├── repo-structure.md
 │   ├── code-hygiene.md
 │   ├── test-strategy.md
+│   ├── database-schema.md
 │   └── tool-registry.md
 └── skills/
     └── <project>-developer-skill/

@@ -680,7 +680,7 @@ def test_install_copies_the_check_and_never_touches_the_manifest(tmp):
 
 
 def test_install_writes_standards_rules_once(tmp):
-    """git-workflow / secrets-management / dependency-versions / docker-volumes / ci-pipelines / repo-structure / code-hygiene / test-strategy / tool-registry: written once, never overwritten,
+    """git-workflow / secrets-management / dependency-versions / docker-volumes / ci-pipelines / repo-structure / code-hygiene / test-strategy / database-schema / tool-registry: written once, never overwritten,
     and skipped when the repo already has its own rule on that topic."""
     root = make_repo(tmp / "p", {"README.md": "x", ".claude/rules/secrets.md": "# ours\n"}, manifest=None)
     install = ["bash", str(REPO / ".claude/install.sh"), str(root)]
@@ -704,6 +704,8 @@ def test_install_writes_standards_rules_once(tmp):
     assert hygiene.startswith("---\npaths:\n") and "{{" not in hygiene and "Keep tests lean" not in hygiene, hygiene[:400]
     tests = (rules / "test-strategy.md").read_text()
     assert tests.startswith("# ") and "{{" not in tests and "lowest level" in tests and "can fail" in tests, tests[:400]
+    db = (rules / "database-schema.md").read_text()
+    assert db.startswith("---\npaths:\n") and "{{" not in db and "idempotent" in db, db[:400]
     tools = (rules / "tool-registry.md").read_text()
     assert "{{" not in tools and "pointer record" in tools and "hewtd maintain" in tools, tools[:400]
     runbook = (rules / "operational-runbook.md").read_text()
