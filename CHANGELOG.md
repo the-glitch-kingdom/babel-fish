@@ -21,7 +21,9 @@ All notable changes to this project will be documented in this file.
   skipped when the repo already has a CI or pipeline rule.
 
 - **`test-strategy.md` standards rule.** The most confidence for the least
-  compute: each behavior tested once, at the lowest level that proves it (mostly
+  compute. Every new test is proven to fail first: run before the fix, or
+  against deliberately broken code, and watched failing for the right reason.
+  Each behavior tested once, at the lowest level that proves it (mostly
   unit tests, integration tests at the seams, a few end-to-end journeys), never
   re-proved higher up. Extend or parametrize an existing test before adding one;
   share expensive setup once per run. No `sleep`, fakes for network and clock,

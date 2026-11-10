@@ -703,7 +703,7 @@ def test_install_writes_standards_rules_once(tmp):
     hygiene = (rules / "code-hygiene.md").read_text()
     assert hygiene.startswith("---\npaths:\n") and "{{" not in hygiene and "Keep tests lean" not in hygiene, hygiene[:400]
     tests = (rules / "test-strategy.md").read_text()
-    assert tests.startswith("# ") and "{{" not in tests and "lowest level" in tests, tests[:400]
+    assert tests.startswith("# ") and "{{" not in tests and "lowest level" in tests and "can fail" in tests, tests[:400]
     tools = (rules / "tool-registry.md").read_text()
     assert "{{" not in tools and "pointer record" in tools and "hewtd maintain" in tools, tools[:400]
     runbook = (rules / "operational-runbook.md").read_text()
