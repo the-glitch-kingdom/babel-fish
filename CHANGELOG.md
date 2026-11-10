@@ -11,9 +11,13 @@ All notable changes to this project will be documented in this file.
   artifacts on, cache dependencies by lockfile hash, and use a matrix only for
   what really differs. Scan what changed when the tool can, with one full run on
   the default branch or a schedule. Cheap checks first, superseded PR runs
-  cancelled, and never a dropped or skipped check to save time. Path-scoped to CI
-  config (GitHub Actions, GitLab, CircleCI, Buildkite, Jenkins, Azure,
-  Bitbucket, Travis), so it costs nothing until Claude touches one. Written once;
+  cancelled, and never a dropped or skipped check to save time. Security
+  scanning: one tool per kind of scan, each scan once where it is cheapest, new
+  high or critical findings fail the build. Deployments: build once and promote
+  the same artifact, gate deploys on checks that already passed, one workflow
+  per pipeline parameterized by environment, deploys queued and never cancelled,
+  a health check and rollback for each. Loads every session
+  (about 3.3k characters), so it applies before the first CI file exists. Written once;
   skipped when the repo already has a CI or pipeline rule.
 
 ## [3.1.0] - 2026-11-09

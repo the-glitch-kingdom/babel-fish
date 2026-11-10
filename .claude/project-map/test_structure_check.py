@@ -697,7 +697,7 @@ def test_install_writes_standards_rules_once(tmp):
     # Path-scoped: frontmatter must survive rendering, or the rule loads every session.
     assert docker.startswith("---\npaths:\n") and (rules / "dependency-versions.md").read_text().startswith("---\npaths:\n")
     ci = (rules / "ci-pipelines.md").read_text()
-    assert ci.startswith("---\npaths:\n") and "{{" not in ci and "runs once" in ci, ci[:400]
+    assert ci.startswith("# ") and "{{" not in ci and "runs once" in ci and "## Deployments" in ci, ci[:400]
     layout = (rules / "repo-structure.md").read_text()
     assert "{{" not in layout and "structure-check.py --detect" in layout, layout[:400]
     hygiene = (rules / "code-hygiene.md").read_text()
