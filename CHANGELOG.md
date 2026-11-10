@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **`database-schema.md` standards rule.** Every schema change is a migration,
+  and one that has run is never edited. Every migration is idempotent (guarded
+  DDL, upserts or guarded updates, proven by running it twice on a scratch
+  database, then down and up) and reversible. Changes go in steps that never
+  break the running app; constraints and indexes live in the database; data
+  changes get their own migration; no destructive migration without permission
+  and a backup; the existing naming is followed. Path-scoped to migrations, SQL,
+  schema files and models. Written once; skipped when the repo already has a
+  database, schema or migration rule.
+
 ## [3.2.0] - 2026-11-09
 
 ### Added

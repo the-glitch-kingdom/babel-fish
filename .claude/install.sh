@@ -137,6 +137,7 @@ KEY FILES AFTER INSTALL
   .claude/rules/repo-structure.md           — Where files go; suggests a structure.toml (written once)
   .claude/rules/code-hygiene.md             — No dead code or scaffolding (written once)
   .claude/rules/test-strategy.md            — Each behavior tested once, at the cheapest level (written once)
+  .claude/rules/database-schema.md          — Idempotent, reversible migrations; constraints in the DB (written once)
   .claude/rules/tool-registry.md            — One pointer record per tool; detail in docs (written once, or its rules added to yours)
   .claude/skills/<slug>-developer-skill/    — Your developer skill
   .githooks/pre-commit                      — Regenerates map; checks auto-loaded context + structure
@@ -558,7 +559,7 @@ if $DRY_RUN; then
     _dry "write $CLAUDE_DIR/project-map/reports/install-report.md"
     _dry "write $CLAUDE_DIR/rules/project-vocabulary.md"
     _dry "write $CLAUDE_DIR/rules/operational-runbook.md  (an existing runbook gets the pointer-record section instead)"
-    _dry "write $CLAUDE_DIR/rules/git-workflow.md, secrets-management.md, dependency-versions.md, docker-volumes.md, ci-pipelines.md, repo-structure.md, code-hygiene.md, test-strategy.md, tool-registry.md  (each skipped if a rule on that topic exists; an existing tool registry gets the pointer-record section instead)"
+    _dry "write $CLAUDE_DIR/rules/git-workflow.md, secrets-management.md, dependency-versions.md, docker-volumes.md, ci-pipelines.md, repo-structure.md, code-hygiene.md, test-strategy.md, database-schema.md, tool-registry.md  (each skipped if a rule on that topic exists; an existing tool registry gets the pointer-record section instead)"
     _dry "write $CLAUDE_DIR/skills/<project>-developer-skill/SKILL.md"
     _dry "write .githooks/pre-commit"
     _dry "run   git config core.hooksPath .githooks"
@@ -707,6 +708,7 @@ _render_rule_once "$NAME" "$RULES_DIR" ci-pipelines        '(^|[-_])ci([-_.]|$)|
 _render_rule_once "$NAME" "$RULES_DIR" repo-structure      'structure|layout|folder'        "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" code-hygiene        'hygiene|dead|cleanup|clean-up'  "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" test-strategy       'test'                           "$DEFAULT_BRANCH"
+_render_rule_once "$NAME" "$RULES_DIR" database-schema     'database|schema|migration'      "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" tool-registry       'tool|registry'                  "$DEFAULT_BRANCH" '## Adding a tool'
 _render_rule_once "$NAME" "$RULES_DIR" operational-runbook 'runbook'                        "$DEFAULT_BRANCH" '## Adding an entry'
 
