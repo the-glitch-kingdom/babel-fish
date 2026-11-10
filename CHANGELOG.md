@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **`ci-pipelines.md` standards rule.** Every CI scan, build, install and test
+  runs once: extend an existing job before adding one, build once and pass
+  artifacts on, cache dependencies by lockfile hash, and use a matrix only for
+  what really differs. Scan what changed when the tool can, with one full run on
+  the default branch or a schedule. Cheap checks first, superseded PR runs
+  cancelled, and never a dropped or skipped check to save time. Path-scoped to CI
+  config (GitHub Actions, GitLab, CircleCI, Buildkite, Jenkins, Azure,
+  Bitbucket, Travis), so it costs nothing until Claude touches one. Written once;
+  skipped when the repo already has a CI or pipeline rule.
+
 ## [3.1.0] - 2026-11-09
 
 ### Added

@@ -229,7 +229,7 @@ A repo that already has a runbook keeps it; the installer appends the template's
 
 ## Standards Rules
 
-`init` also writes seven rules into `.claude/rules/`. Four load every session. `dependency-versions.md`, `docker-volumes.md` and `code-hygiene.md` carry `paths:` frontmatter, so Claude Code loads them only when Claude works with a matching file (a manifest, Dockerfile, compose file, CI workflow or source file):
+`init` also writes eight rules into `.claude/rules/`. Four load every session. `dependency-versions.md`, `docker-volumes.md`, `ci-pipelines.md` and `code-hygiene.md` carry `paths:` frontmatter, so Claude Code loads them only when Claude works with a matching file (a manifest, Dockerfile, compose file, CI workflow or source file):
 
 | File | Says |
 |------|------|
@@ -237,6 +237,7 @@ A repo that already has a runbook keeps it; the installer appends the template's
 | `secrets-management.md` | No hardcoded URLs, passwords, keys, tokens or connection strings; all of them go in the root `.env` (or wherever the repo already keeps it, e.g. `structure.toml`'s `env_file`); only `.env.example` is committed |
 | `dependency-versions.md` | Latest stable version of everything (newest LTS where one exists), looked up, not remembered; the only exception is a version that was tried and failed, pinned with a recorded reason |
 | `docker-volumes.md` | Named volumes for anything a container stores; never anonymous volumes; a bind mount only when a host path is required (entrypoint/init scripts, host-provided config or certs, dev live reload, sockets), commented and `:ro`; never `down -v` / `volume rm` / `prune` without permission; Docker files under `infra/compose/` and `infra/docker/<service>/` |
+| `ci-pipelines.md` | Every CI scan, build, install and test runs once: extend an existing job before adding one, build once and pass artifacts, cache by lockfile, matrix only for real differences; scan what changed, with one full run on the default branch or a schedule; cheap checks first, superseded runs cancelled; never drop or skip a check for speed |
 | `repo-structure.md` | Decide where a file belongs before creating it: follow `.claude/structure.toml` when there is one; otherwise suggest setting one up (`--detect`, `structure-bootstrap`) and use the default layout for anything the repo has no place for; no catch-all folders |
 | `code-hygiene.md` | Remove dead code in the change that kills it; delete debug and scaffolding code before committing; lean tests (one per behavior, no duplicates, no testing the framework), kept only in the test folder; delete tests of removed code, never skip a failing one; propose, don't silently delete, dead code you didn't create |
 | `tool-registry.md` | One pointer record per CLI, MCP server, SDK, credential or integration (name, purpose, the trap if any, `→` doc); the detail goes in a doc, the hewtd way when hit-em-with-the-docs is installed; updated in the same change as the tool; no secrets. A repo that already has a tool registry keeps it and gets this "Adding a tool" section appended instead |
@@ -309,6 +310,7 @@ Or ask Claude to *"set up the repo structure"*. The `structure-bootstrap` skill 
 │   ├── secrets-management.md
 │   ├── dependency-versions.md
 │   ├── docker-volumes.md
+│   ├── ci-pipelines.md
 │   ├── repo-structure.md
 │   ├── code-hygiene.md
 │   └── tool-registry.md

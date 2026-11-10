@@ -133,6 +133,7 @@ KEY FILES AFTER INSTALL
   .claude/rules/secrets-management.md       — No hardcoded secrets; everything in .env (written once)
   .claude/rules/dependency-versions.md      — Latest stable/LTS unless a recorded failure (written once)
   .claude/rules/docker-volumes.md           — Named volumes; bind mounts only when required (written once)
+  .claude/rules/ci-pipelines.md             — Each CI check runs once, on what changed (written once)
   .claude/rules/repo-structure.md           — Where files go; suggests a structure.toml (written once)
   .claude/rules/code-hygiene.md             — No dead code or scaffolding; lean tests in the test folder (written once)
   .claude/rules/tool-registry.md            — One pointer record per tool; detail in docs (written once, or its rules added to yours)
@@ -556,7 +557,7 @@ if $DRY_RUN; then
     _dry "write $CLAUDE_DIR/project-map/reports/install-report.md"
     _dry "write $CLAUDE_DIR/rules/project-vocabulary.md"
     _dry "write $CLAUDE_DIR/rules/operational-runbook.md  (an existing runbook gets the pointer-record section instead)"
-    _dry "write $CLAUDE_DIR/rules/git-workflow.md, secrets-management.md, dependency-versions.md, docker-volumes.md, repo-structure.md, code-hygiene.md, tool-registry.md  (each skipped if a rule on that topic exists; an existing tool registry gets the pointer-record section instead)"
+    _dry "write $CLAUDE_DIR/rules/git-workflow.md, secrets-management.md, dependency-versions.md, docker-volumes.md, ci-pipelines.md, repo-structure.md, code-hygiene.md, tool-registry.md  (each skipped if a rule on that topic exists; an existing tool registry gets the pointer-record section instead)"
     _dry "write $CLAUDE_DIR/skills/<project>-developer-skill/SKILL.md"
     _dry "write .githooks/pre-commit"
     _dry "run   git config core.hooksPath .githooks"
@@ -701,6 +702,7 @@ _render_rule_once "$NAME" "$RULES_DIR" git-workflow        'git|branch|commit|pu
 _render_rule_once "$NAME" "$RULES_DIR" secrets-management  'secret|credential|env|config'   "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" dependency-versions 'depend|version|package|upgrade' "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" docker-volumes      'docker|container|volume'        "$DEFAULT_BRANCH"
+_render_rule_once "$NAME" "$RULES_DIR" ci-pipelines        '(^|[-_])ci([-_.]|$)|pipeline'    "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" repo-structure      'structure|layout|folder'        "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" code-hygiene        'hygiene|dead|cleanup|clean-up'  "$DEFAULT_BRANCH"
 _render_rule_once "$NAME" "$RULES_DIR" tool-registry       'tool|registry'                  "$DEFAULT_BRANCH" '## Adding a tool'
