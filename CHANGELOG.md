@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- **`secrets-management.md`: reuse a variable before adding one.** New rule 4:
+  search `.env.example` first and use the variable that already holds the value;
+  one value, one variable, deriving what can be derived in code (one base URL,
+  not a variable per endpoint). A framework-prefixed copy (`VITE_`,
+  `NEXT_PUBLIC_`) is set from the original where the env loader expands
+  variables, otherwise kept and commented as a pair. New installs only: the rule
+  is written once, so an existing `secrets-management.md` keeps its wording.
+
 ## [3.3.0] - 2026-11-09
 
 ### Added
