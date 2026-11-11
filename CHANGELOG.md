@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- **`secrets-management.md`: reuse a variable before adding one.** New rule 4:
+  search `.env.example` first and use the variable that already holds the value;
+  one value, one variable, deriving what can be derived in code (one base URL,
+  not a variable per endpoint). A framework-prefixed copy (`VITE_`,
+  `NEXT_PUBLIC_`) is set from the original where the env loader expands
+  variables, otherwise kept and commented as a pair. New installs only: the rule
+  is written once, so an existing `secrets-management.md` keeps its wording.
+- **`secrets-management.md`: the real `.env` is readable only by you.** Rule 3
+  adds `chmod 600 .env` on creation, and containers get it through Compose
+  `env_file:`, never a bind mount (a `600` file mounted into a container running
+  as another user can't be read).
+- **structure-check warns when the real `.env` is readable by other users**
+  (`WARN  .env  -- readable by other users on this machine`, fix: `chmod 600
+  .env`). A warning, not a block; skipped on Windows and in CI, where there is no
+  real `.env`.
+
 ## [3.3.0] - 2026-11-09
 
 ### Added

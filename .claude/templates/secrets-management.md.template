@@ -8,11 +8,18 @@
 2. **They all live in the project's one `.env`**: at the root with a committed `.env.example` beside
    it, unless the repo already has its own layout (`env_file` in `.claude/structure.toml`, or an
    existing `.env.example` elsewhere). Never start a second env file.
-3. **NEVER commit a real `.env`** (`git check-ignore .env` must print it). `.env.example` holds every
-   key, with a placeholder and a one-line comment.
-4. **A new variable goes in `.env` and `.env.example` in the same change.** Code fails loudly when
+3. **NEVER commit a real `.env`** (`git check-ignore .env` must print it), and make it readable only
+   by you: `chmod 600 .env` when you create it. A container gets it through Compose `env_file:`,
+   never a bind mount. `.env.example` holds every key, with a placeholder and a one-line comment.
+4. **Reuse a variable before adding one**, as often as possible. Search `.env.example` first and
+   use the variable that already holds the value, even if its name is broader. One value, one
+   variable: derive what you can in code (one `API_BASE_URL`, paths appended in code, never a
+   variable per endpoint). When a framework needs its own prefix (`VITE_`, `NEXT_PUBLIC_`), set it
+   from the original (`VITE_API_URL=${API_URL}`) where the env loader expands variables; where it
+   doesn't, keep both and comment that they must match.
+5. **A new variable goes in `.env` and `.env.example` in the same change.** Code fails loudly when
    it is missing, never falls back to a default that works.
-5. **NEVER print, log or echo a secret**: not in errors, test output, PR text or chat. Name the variable.
-6. **A secret found in code**: move it to `.env`, tell the user, and have it **rotated**; once
+6. **NEVER print, log or echo a secret**: not in errors, test output, PR text or chat. Name the variable.
+7. **A secret found in code**: move it to `.env`, tell the user, and have it **rotated**; once
    committed it is in git history. Staging and production values come from the secret manager or
    CI, never from repo files.

@@ -130,7 +130,7 @@ KEY FILES AFTER INSTALL
   .claude/rules/project-vocabulary.md       — Auto-loaded every session
   .claude/rules/operational-runbook.md      — Pointer records to docs (written once, or its rules added to yours)
   .claude/rules/git-workflow.md             — Branch / PR / wait rules (written once, yours to edit)
-  .claude/rules/secrets-management.md       — No hardcoded secrets; everything in .env (written once)
+  .claude/rules/secrets-management.md       — No hardcoded secrets or URLs; everything in .env, variables reused (written once)
   .claude/rules/dependency-versions.md      — Latest stable/LTS unless a recorded failure (written once)
   .claude/rules/docker-volumes.md           — Named volumes; bind mounts only when required (written once)
   .claude/rules/ci-pipelines.md             — Each CI check runs once, on what changed (written once)

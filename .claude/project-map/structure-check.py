@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -323,6 +324,10 @@ def check_env_files(m: dict, files: dict[str, str]) -> list[Finding]:
         if path and not path.endswith("/") and path != real and env_kind(path.rsplit("/", 1)[-1]) == "secret":
             out.append(Finding("WARN", path, f"local env file outside {real} -- merge its values into {real} "
                                "and delete it (one real .env; stg/prod values live in the secret manager)"))
+    env = PROJECT_ROOT / real
+    # POSIX permission bits only; Windows ACLs have no group/other bits to read.
+    if os.name != "nt" and env.is_file() and env.stat().st_mode & 0o077:
+        out.append(Finding("WARN", real, f"readable by other users on this machine -- chmod 600 {real}"))
     return out
 
 
