@@ -8,8 +8,9 @@
 2. **They all live in the project's one `.env`**: at the root with a committed `.env.example` beside
    it, unless the repo already has its own layout (`env_file` in `.claude/structure.toml`, or an
    existing `.env.example` elsewhere). Never start a second env file.
-3. **NEVER commit a real `.env`** (`git check-ignore .env` must print it). `.env.example` holds every
-   key, with a placeholder and a one-line comment.
+3. **NEVER commit a real `.env`** (`git check-ignore .env` must print it), and make it readable only
+   by you: `chmod 600 .env` when you create it. A container gets it through Compose `env_file:`,
+   never a bind mount. `.env.example` holds every key, with a placeholder and a one-line comment.
 4. **Reuse a variable before adding one**, as often as possible. Search `.env.example` first and
    use the variable that already holds the value, even if its name is broader. One value, one
    variable: derive what you can in code (one `API_BASE_URL`, paths appended in code, never a

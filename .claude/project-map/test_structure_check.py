@@ -392,6 +392,7 @@ def test_real_env_that_git_would_commit_fails_before_it_is_staged(tmp):
     assert r.returncode == 1 and "FAIL  .env  -- real env file is not gitignored" in r.stdout, r.stdout
     (root / ".gitignore").write_text(".env\n.env.*\n!.env.example\n")
     subprocess.run(["git", "add", ".gitignore"], cwd=root, check=True)
+    (root / ".env").chmod(0o600)
     r = check(root)
     assert r.returncode == 0 and ".env " not in r.stdout.replace(".env.example", ""), r.stdout
 
@@ -399,7 +400,10 @@ def test_real_env_that_git_would_commit_fails_before_it_is_staged(tmp):
 def test_scattered_local_env_files_warn(tmp):
     root = make_repo(tmp, {"README.md": "x", ".env.example": "A=", ".gitignore": ".env\n.env.*\n!.env.example\n"},
                      manifest=SINGLE_ENV.replace('["README.md"]', '["README.md", ".env.example", ".gitignore"]'))
-    (root / ".env").write_text("A=dev")                        # the one real file: fine
+    (root / ".env").write_text("A=dev")                        # the one real file: fine once it is 600
+    (root / ".env").chmod(0o644)
+    assert "WARN  .env  -- readable by other users on this machine\n        fix: chmod 600 .env" in check(root).stdout
+    (root / ".env").chmod(0o600)
     (root / "apps/api").mkdir(parents=True)
     (root / "apps/api/.env.local").write_text("A=other")       # scattered, ignored
     r = check(root)
